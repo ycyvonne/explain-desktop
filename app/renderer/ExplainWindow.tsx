@@ -26,6 +26,8 @@ const ExplainWindow: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState<string>('');
+  const [showExplanationContext, setShowExplanationContext] = useState(false);
+  const [explainKey, setExplainKey] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -114,6 +116,8 @@ const ExplainWindow: React.FC = () => {
       setSelectedText(null);
       setMessages([]);
       setExplanation('');
+      setShowExplanationContext(false);
+      setExplainKey((prev) => prev + 1);
       // Set initial tab based on isExplain, but user can switch
       setActiveTab(isExplainMode ? 'explain' : 'chat');
 
@@ -135,6 +139,8 @@ const ExplainWindow: React.FC = () => {
       setImage(null);
       setMessages([]);
       setExplanation('');
+      setShowExplanationContext(false);
+      setExplainKey((prev) => prev + 1);
       setActiveTab(isExplainMode ? 'explain' : 'chat');
 
       if (!isExplainMode) {
@@ -172,6 +178,22 @@ const ExplainWindow: React.FC = () => {
       });
     }
   }, [activeTab, image, selectedText]);
+
+  // Auto-scroll chat to bottom only when user sends a message
+  useEffect(() => {
+    if (activeTab === 'chat' && scrollRef.current && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      // Only scroll if the last message is from the user
+      if (lastMessage.role === 'user') {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        });
+      }
+    }
+  }, [messages, activeTab]);
 
   return (
     <div className="chat-bubble">
@@ -219,23 +241,54 @@ const ExplainWindow: React.FC = () => {
         <>
           <div className={`tab-content ${activeTab === 'explain' ? 'active' : 'hidden'}`}>
             <ExplainComponent 
+              key={explainKey}
               image={image} 
               text={selectedText}
               onExplanationChange={setExplanation}
-              onAskFollowup={() => setActiveTab('chat')}
+              onAskFollowup={() => {
+                setShowExplanationContext(true);
+                setActiveTab('chat');
+              }}
             />
           </div>
           <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
-            {explanation && (
-              <div className="chat-preview" style={{ padding: '12px', backgroundColor: 'rgba(28, 28, 28, 0.95)', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(120, 120, 120, 0.4)', maxHeight: '50px', overflow: 'auto' }}>
-                <div className="chat-content chat-content-markdown" style={{ fontSize: '13px' }}>
-                  <div className="md">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                    >
-                      {normalizeMd(explanation)}
-                    </ReactMarkdown>
+            {showExplanationContext && explanation && (
+              <div className="chat-preview" style={{ padding: '12px', backgroundColor: 'rgba(28, 28, 28, 0.95)', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(120, 120, 120, 0.4)', maxHeight: '50px', position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowExplanationContext(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    zIndex: 10,
+                    fontSize: '12px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.95)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+                  }}
+                  title="Close context"
+                >
+                  ✕
+                </button>
+                <div style={{ maxHeight: '50px', overflow: 'auto', paddingRight: '24px' }}>
+                  <div className="chat-content chat-content-markdown" style={{ fontSize: '13px' }}>
+                    <div className="md">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {normalizeMd(explanation)}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>

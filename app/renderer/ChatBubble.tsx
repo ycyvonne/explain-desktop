@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import askLLM from './llm';
 
 type Role = 'user' | 'assistant';
@@ -11,7 +14,19 @@ type Message = {
   content: string;
 };
 
-function normalizeMd(md: string) {
+function normalizeMd(input: string) {
+  let md = input;
+
+  // 1) Convert \[ ... \]  ->  $$ ... $$
+  md = md.replace(/\\\[(.+?)\\\]/gs, (_, content) => {
+    return `\n\n$$${content.trim()}$$\n\n`;
+  });
+
+  // 2) Convert \( ... \)  ->  $ ... $
+  md = md.replace(/\\\((.+?)\\\)/gs, (_, content) => {
+    return `$${content.trim()}$`;
+  });
+
   return md
     // Join lines that are only "1." / "2." etc. with the following line.
     .replace(/(^|\n)(\s*)(\d+)\.\s*\n(?!\s*[-*+]|\s*\d+\.)/g, '$1$2$3. ')
@@ -177,7 +192,10 @@ const ChatBubble: React.FC = () => {
             <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
             <div className="chat-content chat-content-markdown">
               <div className="md">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
                   {normalizeMd(message.content)}
                 </ReactMarkdown>
               </div>

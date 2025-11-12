@@ -20,6 +20,8 @@ type Tab = 'explain' | 'chat';
 
 const ExplainWindow: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState<string | null>(null);
+  const [autoExplainText, setAutoExplainText] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<Tab>('explain');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -46,6 +48,7 @@ const ExplainWindow: React.FC = () => {
   type SendOptions = {
     question?: string;
     image?: string;
+    text?: string;
     history?: Message[];
     resetInput?: boolean;
   };
@@ -57,11 +60,12 @@ const ExplainWindow: React.FC = () => {
       }
 
       const activeImage = options.image ?? image;
+      const activeText = options.text ?? selectedText;
       const activeQuestionRaw = options.question ?? input;
       const activeQuestion = activeQuestionRaw.trim();
       const historyBase = options.history ?? messagesRef.current;
 
-      if (!activeImage || !activeQuestion) {
+      if ((!activeImage && !activeText) || !activeQuestion) {
         return;
       }
 
@@ -77,7 +81,8 @@ const ExplainWindow: React.FC = () => {
       try {
         const answer = await askLLM({
           question: activeQuestion,
-          screenshotDataUrl: activeImage,
+          screenshotDataUrl: activeImage || undefined,
+          text: activeText || undefined,
           history: historyBase,
         });
 
@@ -92,7 +97,7 @@ const ExplainWindow: React.FC = () => {
         setLoading(false);
       }
     },
-    [image, input, loading],
+    [image, selectedText, input, loading],
   );
 
   const onSubmit = useCallback(
@@ -104,8 +109,10 @@ const ExplainWindow: React.FC = () => {
   );
 
   useEffect(() => {
-    const handler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
+    const screenshotHandler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
       setImage(dataUrl);
+      setSelectedText(null);
+      setAutoExplainText(false); // Disable auto-explain for screenshots
       setMessages([]);
       // Set initial tab based on isExplain, but user can switch
       setActiveTab(isExplainMode ? 'explain' : 'chat');
@@ -123,7 +130,27 @@ const ExplainWindow: React.FC = () => {
       }
     };
 
-    window.overlayAPI?.onScreenshot(handler);
+    const textSelectionHandler = ({ text, isExplain: isExplainMode = true }: TextSelectionPayload) => {
+      setSelectedText(text);
+      setImage(null);
+      setMessages([]);
+      setActiveTab(isExplainMode ? 'explain' : 'chat');
+      // Enable auto-explain for text selections (cmd+shift+c)
+      setAutoExplainText(isExplainMode);
+
+      if (!isExplainMode) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
+          });
+        });
+      }
+    };
+
+    window.overlayAPI?.onScreenshot(screenshotHandler);
+    window.overlayAPI?.onTextSelection(textSelectionHandler);
 
     return () => {
       // No-op cleanup because preload removes listeners before re-registering
@@ -133,6 +160,7 @@ const ExplainWindow: React.FC = () => {
   useEffect(() => {
     const handleOverlayHide = () => {
       setInput('');
+      setAutoExplainText(false); // Reset auto-explain flag when hiding
     };
 
     window.overlayAPI?.onHide(handleOverlayHide);
@@ -140,17 +168,17 @@ const ExplainWindow: React.FC = () => {
 
   // Focus input when switching to chat tab
   useEffect(() => {
-    if (activeTab === 'chat' && image) {
+    if (activeTab === 'chat' && (image || selectedText)) {
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
     }
-  }, [activeTab, image]);
+  }, [activeTab, image, selectedText]);
 
   return (
     <div className="chat-bubble">
       <div className="chat-header">
-        {image && (
+        {(image || selectedText) && (
           <div className="tab-container">
             <button
               className={`tab-button ${activeTab === 'explain' ? 'active' : ''}`}
@@ -168,7 +196,7 @@ const ExplainWindow: React.FC = () => {
             </button>
           </div>
         )}
-        {!image && (
+        {!image && !selectedText && (
           <div className="chat-title">In-Context Explain</div>
         )}
         <div className="chat-hint">Press Esc to hide</div>
@@ -183,10 +211,16 @@ const ExplainWindow: React.FC = () => {
         </div>
       )}
 
-      {image && (
+      {selectedText && (
+        <div className="chat-preview" style={{ padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px', margin: '8px', maxHeight: '150px', overflow: 'auto' }}>
+          <div style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-wrap' }}>{selectedText}</div>
+        </div>
+      )}
+
+      {(image || selectedText) && (
         <>
           <div className={`tab-content ${activeTab === 'explain' ? 'active' : 'hidden'}`}>
-            <ExplainComponent image={image} />
+            <ExplainComponent image={image} text={selectedText} autoExplain={autoExplainText} />
           </div>
           <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
             <div ref={scrollRef} className="chat-messages">
@@ -218,12 +252,12 @@ const ExplainWindow: React.FC = () => {
                 autoFocus
                 ref={inputRef}
                 className="chat-input"
-                placeholder={image ? 'Ask about the screenshot…' : 'Capture a screenshot first'}
-                disabled={!image || loading}
+                placeholder={image ? 'Ask about the screenshot…' : selectedText ? 'Ask about the selected text…' : 'Capture a screenshot first'}
+                disabled={(!image && !selectedText) || loading}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
               />
-              <button className="chat-send" disabled={!image || loading} type="submit">
+              <button className="chat-send" disabled={(!image && !selectedText) || loading} type="submit">
                 {loading ? 'Sending…' : 'Send'}
               </button>
             </form>

@@ -1,15 +1,20 @@
 type AskArgs = {
   question: string;
-  screenshotDataUrl: string;
+  screenshotDataUrl?: string;
+  text?: string;
   history: { role: 'user' | 'assistant'; content: string }[];
 };
 
 const SYSTEM_PROMPT =
   'You are a concise on-screen assistant. Explain what is in the screenshot and answer precisely.';
 
+const SYSTEM_PROMPT_TEXT =
+  'You are a concise on-screen assistant. Explain the selected text and answer precisely.';
+
 export default async function askLLM({
   question,
   screenshotDataUrl,
+  text,
   history,
 }: AskArgs): Promise<string> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -17,15 +22,26 @@ export default async function askLLM({
     throw new Error('Missing VITE_OPENAI_API_KEY. Add it to your environment before running the app.');
   }
 
+  const systemPrompt = screenshotDataUrl ? SYSTEM_PROMPT : SYSTEM_PROMPT_TEXT;
+
+  let userContent: any;
+  if (screenshotDataUrl) {
+    userContent = [
+      { type: 'text', text: question },
+      { type: 'image_url', image_url: { url: screenshotDataUrl } },
+    ];
+  } else if (text) {
+    userContent = `${question}\n\nSelected text:\n${text}`;
+  } else {
+    throw new Error('Either screenshotDataUrl or text must be provided');
+  }
+
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...history.map((message) => ({ role: message.role, content: message.content })),
     {
       role: 'user',
-      content: [
-        { type: 'text', text: question },
-        { type: 'image_url', image_url: { url: screenshotDataUrl } },
-      ],
+      content: userContent,
     } as any,
   ];
 

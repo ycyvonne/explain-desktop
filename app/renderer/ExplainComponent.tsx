@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -25,22 +25,33 @@ const EXPLANATION_LABELS = [
 ] as const;
 
 type ExplainComponentProps = {
-  image: string;
+  image?: string | null;
+  text?: string | null;
+  autoExplain?: boolean;
 };
 
-const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
+const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, autoExplain = false }) => {
   const [level, setLevel] = useState<number>(2); // Default to high school (middle option)
   const [explanation, setExplanation] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  // Clear explanation when image changes
+  // Auto-trigger explain when text is selected (via cmd+shift+c)
+  const hasAutoExplainedRef = useRef<string | null>(null);
+
+  // Clear explanation when image or text changes
   useEffect(() => {
     setExplanation('');
     setLoading(false);
-  }, [image]);
+    // Reset auto-explained ref when content changes
+    hasAutoExplainedRef.current = null;
+  }, [image, text]);
 
   const handleExplain = useCallback(async () => {
     if (loading) {
+      return;
+    }
+
+    if (!image && !text) {
       return;
     }
 
@@ -51,7 +62,8 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
       
       const answer = await askLLM({
         question,
-        screenshotDataUrl: image,
+        screenshotDataUrl: image || undefined,
+        text: text || undefined,
         history: [],
       });
 
@@ -62,7 +74,20 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
     } finally {
       setLoading(false);
     }
-  }, [image, level, loading]);
+  }, [image, text, level, loading]);
+
+  // Auto-trigger explain when text is selected (via cmd+shift+c)
+  useEffect(() => {
+    if (autoExplain && text && !image && !loading && !explanation && hasAutoExplainedRef.current !== text) {
+      // Mark that we've auto-explained this text
+      hasAutoExplainedRef.current = text;
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        handleExplain();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoExplain, text, image, loading, explanation, handleExplain]);
 
   return (
     <>
@@ -96,7 +121,7 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
         <button
           className="explain-button"
           onClick={handleExplain}
-          disabled={loading || !image}
+          disabled={loading || (!image && !text)}
           type="button"
         >
           {loading ? 'Explaining…' : 'Explain'}

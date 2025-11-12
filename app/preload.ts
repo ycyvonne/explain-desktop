@@ -5,7 +5,13 @@ type ScreenshotPayload = {
   isExplain?: boolean;
 };
 
+type TextSelectionPayload = {
+  text: string;
+  isExplain?: boolean;
+};
+
 type ScreenshotCallback = (payload: ScreenshotPayload) => void;
+type TextSelectionCallback = (payload: TextSelectionPayload) => void;
 
 contextBridge.exposeInMainWorld('overlayAPI', {
   onScreenshot: (cb: ScreenshotCallback) => {
@@ -15,6 +21,12 @@ contextBridge.exposeInMainWorld('overlayAPI', {
         cb({ dataUrl: payload, isExplain: false });
         return;
       }
+      cb(payload);
+    });
+  },
+  onTextSelection: (cb: TextSelectionCallback) => {
+    ipcRenderer.removeAllListeners('text-selection-ready');
+    ipcRenderer.on('text-selection-ready', (_event, payload: TextSelectionPayload) => {
       cb(payload);
     });
   },

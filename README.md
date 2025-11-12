@@ -3,8 +3,9 @@
 A macOS-only Electron overlay that mirrors Claude Desktop's "Explain Screenshot" flow. Hit a global hotkey, capture a region with the native macOS selection UI, and chat about it in-place without losing context.
 
 ## Global shortcuts
-- ⌘⇧E => Auto-explain
+- ⌘⇧E => Explain
 - ⌘⇧X => Ask a question
+- ⌘⇧C => Send highlighted text to auto-explain
 
 ## Features
 - Native `screencapture -i` tool

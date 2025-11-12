@@ -27,9 +27,11 @@ const EXPLANATION_LABELS = [
 type ExplainComponentProps = {
   image?: string | null;
   text?: string | null;
+  onExplanationChange?: (explanation: string) => void;
+  onAskFollowup?: () => void;
 };
 
-const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text }) => {
+const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, onExplanationChange, onAskFollowup }) => {
   const [level, setLevel] = useState<number>(2); // Default to high school (middle option)
   const [explanation, setExplanation] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +40,8 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text }) => {
   useEffect(() => {
     setExplanation('');
     setLoading(false);
-  }, [image, text]);
+    onExplanationChange?.('');
+  }, [image, text, onExplanationChange]);
 
   const handleExplain = useCallback(async () => {
     if (loading) {
@@ -62,13 +65,16 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text }) => {
       });
 
       setExplanation(answer);
+      onExplanationChange?.(answer);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setExplanation(`Failed to generate explanation: ${message}`);
+      const errorMessage = `Failed to generate explanation: ${message}`;
+      setExplanation(errorMessage);
+      onExplanationChange?.(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [image, text, level, loading]);
+  }, [image, text, level, loading, onExplanationChange]);
 
   // Auto-trigger explain when text is selected (via cmd+shift+c)
   useEffect(() => {
@@ -122,16 +128,39 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text }) => {
           {loading ? (
             <div className="chat-content">Thinking…</div>
           ) : (
-            <div className="chat-content chat-content-markdown">
-              <div className="md">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {normalizeMd(explanation)}
-                </ReactMarkdown>
+            <>
+              <div className="chat-content chat-content-markdown">
+                <div className="md">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {normalizeMd(explanation)}
+                  </ReactMarkdown>
+                </div>
               </div>
-            </div>
+              {explanation && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(120, 120, 120, 0.3)' }}>
+                  <button
+                    type="button"
+                    onClick={onAskFollowup}
+                    className="followup-link"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(134, 197, 255, 0.95)',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      textDecoration: 'underline',
+                      padding: 0,
+                      font: 'inherit',
+                    }}
+                  >
+                    Ask followup question
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

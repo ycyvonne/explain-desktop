@@ -25,6 +25,7 @@ const ExplainWindow: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [explanation, setExplanation] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -112,6 +113,7 @@ const ExplainWindow: React.FC = () => {
       setImage(dataUrl);
       setSelectedText(null);
       setMessages([]);
+      setExplanation('');
       // Set initial tab based on isExplain, but user can switch
       setActiveTab(isExplainMode ? 'explain' : 'chat');
 
@@ -132,6 +134,7 @@ const ExplainWindow: React.FC = () => {
       setSelectedText(text);
       setImage(null);
       setMessages([]);
+      setExplanation('');
       setActiveTab(isExplainMode ? 'explain' : 'chat');
 
       if (!isExplainMode) {
@@ -215,9 +218,28 @@ const ExplainWindow: React.FC = () => {
       {(image || selectedText) && (
         <>
           <div className={`tab-content ${activeTab === 'explain' ? 'active' : 'hidden'}`}>
-            <ExplainComponent image={image} text={selectedText}  />
+            <ExplainComponent 
+              image={image} 
+              text={selectedText}
+              onExplanationChange={setExplanation}
+              onAskFollowup={() => setActiveTab('chat')}
+            />
           </div>
           <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
+            {explanation && (
+              <div className="chat-preview" style={{ padding: '12px', backgroundColor: 'rgba(28, 28, 28, 0.95)', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(120, 120, 120, 0.4)', maxHeight: '50px', overflow: 'auto' }}>
+                <div className="chat-content chat-content-markdown" style={{ fontSize: '13px' }}>
+                  <div className="md">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {normalizeMd(explanation)}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={scrollRef} className="chat-messages">
               {messages.map((message, index) => (
                 <div key={index} className={`chat-message chat-${message.role}`}>

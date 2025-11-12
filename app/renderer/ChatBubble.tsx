@@ -27,6 +27,7 @@ const ChatBubble: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>([]);
+  const shouldFocusAfterLoadRef = useRef<boolean>(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -102,6 +103,16 @@ const ChatBubble: React.FC = () => {
     [image, input, loading],
   );
 
+  useEffect(() => {
+    // Focus input after loading completes if it was triggered by autoSend
+    if (!loading && shouldFocusAfterLoadRef.current) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      shouldFocusAfterLoadRef.current = false;
+    }
+  }, [loading]);
+
   const onSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
@@ -115,11 +126,18 @@ const ChatBubble: React.FC = () => {
       setImage(dataUrl);
       setMessages([]);
 
+      // Use multiple requestAnimationFrame calls and a small timeout to ensure
+      // the window is fully focused and ready before focusing the input
       requestAnimationFrame(() => {
-        inputRef.current?.focus();
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 100);
+        });
       });
 
       if (autoSend) {
+        shouldFocusAfterLoadRef.current = true;
         void send({
           question: 'Explain this',
           image: dataUrl,

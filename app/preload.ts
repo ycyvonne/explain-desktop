@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 type ScreenshotPayload = {
   dataUrl: string;
-  autoSend?: boolean;
+  isExplain?: boolean;
 };
 
 type ScreenshotCallback = (payload: ScreenshotPayload) => void;
@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('overlayAPI', {
     ipcRenderer.removeAllListeners('screenshot-ready');
     ipcRenderer.on('screenshot-ready', (_event, payload: ScreenshotPayload | string) => {
       if (typeof payload === 'string') {
-        cb({ dataUrl: payload, autoSend: false });
+        cb({ dataUrl: payload, isExplain: false });
         return;
       }
       cb(payload);

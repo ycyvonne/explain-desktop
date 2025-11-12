@@ -122,14 +122,14 @@ function showOverlayNearCursor() {
 app.whenReady().then(() => {
   createOverlay();
 
-  const registerShortcut = (accelerator: string, autoSend: boolean) => {
+  const registerShortcut = (accelerator: string, isExplain: boolean) => {
     const ok = globalShortcut.register(accelerator, async () => {
       const capture = await captureRegion();
       if (!capture) return;
       showOverlayNearCursor();
       overlay?.webContents.send('screenshot-ready', {
         dataUrl: capture.dataUrl,
-        autoSend,
+        isExplain,
       });
     });
 

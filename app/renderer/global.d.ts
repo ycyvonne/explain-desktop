@@ -1,7 +1,7 @@
 declare global {
   interface ScreenshotPayload {
     dataUrl: string;
-    autoSend?: boolean;
+    isExplain?: boolean;
   }
 
   interface OverlayAPI {

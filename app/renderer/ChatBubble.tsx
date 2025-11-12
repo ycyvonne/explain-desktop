@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import askLLM from './llm';
 
 type Role = 'user' | 'assistant';
@@ -14,12 +16,16 @@ const ChatBubble: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = (dataUrl: string) => {
       setImage(dataUrl);
       setMessages([]);
       setInput('Explain this.');
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     };
 
     window.overlayAPI?.onScreenshot(handler);
@@ -106,7 +112,9 @@ const ChatBubble: React.FC = () => {
         {messages.map((message, index) => (
           <div key={index} className={`chat-message chat-${message.role}`}>
             <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
-            <span className="chat-content">{message.content}</span>
+            <div className="chat-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+            </div>
           </div>
         ))}
         {loading && (
@@ -120,6 +128,7 @@ const ChatBubble: React.FC = () => {
       <form className="chat-form" onSubmit={onSubmit}>
         <input
           autoFocus
+          ref={inputRef}
           className="chat-input"
           placeholder={image ? 'Ask about the screenshot…' : 'Capture a screenshot first'}
           disabled={!image || loading}

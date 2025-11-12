@@ -30,8 +30,8 @@ function releaseEscapeShortcut() {
 
 function createOverlay() {
   overlay = new BrowserWindow({
-    width: 520,
-    height: 400,
+    width: 720,
+    height: 600,
     minWidth: 360,
     minHeight: 280,
     frame: false,
@@ -199,14 +199,9 @@ function showOverlayNearCursor() {
   const cursorPoint = screen.getCursorScreenPoint();
   const displayBounds = screen.getDisplayNearestPoint(cursorPoint).workArea;
   const { width: overlayWidth, height: overlayHeight } = overlay.getBounds();
-  const targetX = Math.min(
-    Math.max(cursorPoint.x - overlayWidth, displayBounds.x),
-    displayBounds.x + displayBounds.width - overlayWidth,
-  );
-  const targetY = Math.min(
-    Math.max(cursorPoint.y - overlayHeight, displayBounds.y),
-    displayBounds.y + displayBounds.height - overlayHeight,
-  );
+  // Center the window on the screen
+  const targetX = displayBounds.x + (displayBounds.width - overlayWidth) / 2;
+  const targetY = displayBounds.y + (displayBounds.height - overlayHeight) / 2;
   overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlay.setAlwaysOnTop(true, 'screen-saver');
   overlay.setBounds({ x: targetX, y: targetY, width: overlayWidth, height: overlayHeight });

@@ -91,9 +91,19 @@ function showOverlayNearCursor() {
   if (!overlay) return;
 
   const cursorPoint = screen.getCursorScreenPoint();
+  const displayBounds = screen.getDisplayNearestPoint(cursorPoint).workArea;
+  const { width: overlayWidth, height: overlayHeight } = overlay.getBounds();
+  const targetX = Math.min(
+    Math.max(cursorPoint.x - overlayWidth, displayBounds.x),
+    displayBounds.x + displayBounds.width - overlayWidth,
+  );
+  const targetY = Math.min(
+    Math.max(cursorPoint.y - overlayHeight, displayBounds.y),
+    displayBounds.y + displayBounds.height - overlayHeight,
+  );
   overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlay.setAlwaysOnTop(true, 'screen-saver');
-  overlay.setBounds({ x: cursorPoint.x + 12, y: cursorPoint.y + 12, width: 520, height: 400 });
+  overlay.setBounds({ x: targetX, y: targetY, width: overlayWidth, height: overlayHeight });
   overlay.showInactive();
   setTimeout(() => {
     if (!overlay || overlay.isDestroyed()) return;

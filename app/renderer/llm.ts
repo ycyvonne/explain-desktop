@@ -9,7 +9,7 @@ const SYSTEM_PROMPT =
   'You are a concise on-screen assistant. Explain what is in the screenshot and answer precisely.';
 
 const SYSTEM_PROMPT_TEXT =
-  'You are a concise on-screen assistant. Explain the selected text and answer precisely.';
+  'You are a concise on-screen assistant. Explain the selected text and answer precisely. If it is code, explain what it does.';
 
 export default async function askLLM({
   question,

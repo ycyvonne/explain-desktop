@@ -21,7 +21,6 @@ type Tab = 'explain' | 'chat';
 const ExplainWindow: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState<string | null>(null);
-  const [autoExplainText, setAutoExplainText] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<Tab>('explain');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -112,7 +111,6 @@ const ExplainWindow: React.FC = () => {
     const screenshotHandler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
       setImage(dataUrl);
       setSelectedText(null);
-      setAutoExplainText(false); // Disable auto-explain for screenshots
       setMessages([]);
       // Set initial tab based on isExplain, but user can switch
       setActiveTab(isExplainMode ? 'explain' : 'chat');
@@ -135,8 +133,6 @@ const ExplainWindow: React.FC = () => {
       setImage(null);
       setMessages([]);
       setActiveTab(isExplainMode ? 'explain' : 'chat');
-      // Enable auto-explain for text selections (cmd+shift+c)
-      setAutoExplainText(isExplainMode);
 
       if (!isExplainMode) {
         requestAnimationFrame(() => {
@@ -160,7 +156,6 @@ const ExplainWindow: React.FC = () => {
   useEffect(() => {
     const handleOverlayHide = () => {
       setInput('');
-      setAutoExplainText(false); // Reset auto-explain flag when hiding
     };
 
     window.overlayAPI?.onHide(handleOverlayHide);
@@ -220,7 +215,7 @@ const ExplainWindow: React.FC = () => {
       {(image || selectedText) && (
         <>
           <div className={`tab-content ${activeTab === 'explain' ? 'active' : 'hidden'}`}>
-            <ExplainComponent image={image} text={selectedText} autoExplain={autoExplainText} />
+            <ExplainComponent image={image} text={selectedText}  />
           </div>
           <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
             <div ref={scrollRef} className="chat-messages">

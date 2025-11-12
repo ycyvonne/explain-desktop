@@ -133,11 +133,11 @@ async function captureSelectedText(): Promise<string | null> {
     // Try key code method first (works better with VSCode/Chrome)
     try {
       await sendCmdCWithKeyCode();
-      await delay(150);
+      await delay(100);
     } catch (err) {
       // If key code fails, try keystroke method
       await sendCmdCWithKeystroke();
-      await delay(150);
+      await delay(100);
     }
     
     // Poll the clipboard to see if it changed (with timeout)
@@ -147,7 +147,7 @@ async function captureSelectedText(): Promise<string | null> {
     
     // If clipboard didn't change, wait a bit more and check again
     while (captured === previousClipboardText && attempts < maxAttempts) {
-      await delay(150);
+      await delay(100);
       captured = clipboard.readText();
       attempts++;
     }
@@ -156,13 +156,13 @@ async function captureSelectedText(): Promise<string | null> {
     if (captured === previousClipboardText && previousClipboardText !== '') {
       try {
         await sendCmdCWithKeystroke(); // Try keystroke method (for Terminal)
-        await delay(300);
+        await delay(100);
         captured = clipboard.readText();
       } catch (err) {
         // If that fails, try key code again
         try {
           await sendCmdCWithKeyCode();
-          await delay(300);
+          await delay(100);
           captured = clipboard.readText();
         } catch (err2) {
           // Both methods failed, but continue to check clipboard
@@ -179,10 +179,10 @@ async function captureSelectedText(): Promise<string | null> {
       return captured || null;
     }
     
-    // Restore original clipboard contents
-    if (previousClipboardText) {
-      clipboard.writeText(previousClipboardText);
-    }
+    // // Restore original clipboard contents
+    // if (previousClipboardText) {
+    //   clipboard.writeText(previousClipboardText);
+    // }
     return null;
   } catch (error) {
     console.error('Failed to capture selected text:', error);

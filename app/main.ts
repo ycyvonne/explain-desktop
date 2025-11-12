@@ -7,6 +7,26 @@ import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
 
 let overlay: BrowserWindow | null = null;
+let escapeRegistered = false;
+
+function ensureEscapeShortcut() {
+  if (escapeRegistered) return;
+  const ok = globalShortcut.register('Escape', () => {
+    if (!overlay || overlay.isDestroyed() || !overlay.isVisible()) return;
+    overlay.hide();
+  });
+  if (!ok) {
+    console.warn('Failed to register Escape shortcut for overlay');
+    return;
+  }
+  escapeRegistered = true;
+}
+
+function releaseEscapeShortcut() {
+  if (!escapeRegistered) return;
+  globalShortcut.unregister('Escape');
+  escapeRegistered = false;
+}
 
 function createOverlay() {
   overlay = new BrowserWindow({
@@ -19,20 +39,26 @@ function createOverlay() {
     skipTaskbar: true,
     hasShadow: true,
     focusable: true,
+    fullscreenable: false,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
     },
   });
-
+  
   const rendererPath = path.join(__dirname, 'renderer', 'index.html');
   overlay.loadFile(rendererPath).catch((err) => {
     console.error('Failed to load renderer:', err);
   });
 
   overlay.on('closed', () => {
+    releaseEscapeShortcut();
     overlay = null;
+  });
+
+  overlay.on('hide', () => {
+    releaseEscapeShortcut();
   });
 }
 
@@ -65,10 +91,19 @@ function showOverlayNearCursor() {
   if (!overlay) return;
 
   const cursorPoint = screen.getCursorScreenPoint();
+  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlay.setAlwaysOnTop(true, 'screen-saver');
   overlay.setBounds({ x: cursorPoint.x + 12, y: cursorPoint.y + 12, width: 520, height: 400 });
   overlay.showInactive();
-  overlay.focus();
+  setTimeout(() => {
+    if (!overlay || overlay.isDestroyed()) return;
+    overlay.setVisibleOnAllWorkspaces(false);
+  }, 0);
+  setTimeout(() => {
+    if (!overlay || overlay.isDestroyed()) return;
+    overlay.webContents.focus();
+  }, 0);
+  ensureEscapeShortcut();
 }
 
 app.whenReady().then(() => {
@@ -96,5 +131,6 @@ app.on('will-quit', () => {
 });
 
 ipcMain.on('overlay-hide', () => {
+  releaseEscapeShortcut();
   overlay?.hide();
 });

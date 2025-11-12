@@ -60,6 +60,7 @@ function createOverlay() {
   });
 
   overlay.on('hide', () => {
+    overlay?.webContents.send('overlay-hidden');
     releaseEscapeShortcut();
   });
 }

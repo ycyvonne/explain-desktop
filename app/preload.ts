@@ -18,5 +18,11 @@ contextBridge.exposeInMainWorld('overlayAPI', {
       cb(payload);
     });
   },
+  onHide: (cb: () => void) => {
+    ipcRenderer.removeAllListeners('overlay-hidden');
+    ipcRenderer.on('overlay-hidden', () => {
+      cb();
+    });
+  },
   hide: () => ipcRenderer.send('overlay-hide'),
 });

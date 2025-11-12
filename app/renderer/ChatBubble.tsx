@@ -106,12 +106,6 @@ const ChatBubble: React.FC = () => {
       setImage(dataUrl);
       setMessages([]);
 
-      if (autoSend) {
-        setInput('Explain this');
-      } else {
-        setInput('');
-      }
-
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -132,6 +126,14 @@ const ChatBubble: React.FC = () => {
       // No-op cleanup because preload removes listeners before re-registering
     };
   }, [send]);
+
+  useEffect(() => {
+    const handleOverlayHide = () => {
+      setInput('');
+    };
+
+    window.overlayAPI?.onHide(handleOverlayHide);
+  }, [setInput]);
 
   return (
     <div className="chat-bubble">

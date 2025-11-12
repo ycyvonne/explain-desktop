@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -32,13 +32,11 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
   const [level, setLevel] = useState<number>(2); // Default to high school (middle option)
   const [explanation, setExplanation] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const hasAutoExplainedRef = useRef<string | null>(null);
 
   // Clear explanation when image changes
   useEffect(() => {
     setExplanation('');
     setLoading(false);
-    hasAutoExplainedRef.current = null;
   }, [image]);
 
   const handleExplain = useCallback(async () => {
@@ -66,22 +64,8 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image }) => {
     }
   }, [image, level, loading]);
 
-  // Auto-explain when component mounts or image changes
-  useEffect(() => {
-    if (image && !loading && hasAutoExplainedRef.current !== image) {
-      hasAutoExplainedRef.current = image;
-      void handleExplain();
-    }
-  }, [image, handleExplain, loading]);
-
   return (
     <>
-      {image && (
-        <div className="chat-preview">
-          <img src={image} alt="Screenshot preview" />
-        </div>
-      )}
-
       <div className="explain-controls">
         <div className="explain-slider-container">
           <input

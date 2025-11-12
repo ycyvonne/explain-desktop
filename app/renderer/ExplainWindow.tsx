@@ -16,16 +16,17 @@ type Message = {
   content: string;
 };
 
-const ChatBubble: React.FC = () => {
+type Tab = 'explain' | 'chat';
+
+const ExplainWindow: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
-  const [isExplain, setIsExplain] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<Tab>('explain');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>([]);
-  const shouldFocusAfterLoadRef = useRef<boolean>(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -94,16 +95,6 @@ const ChatBubble: React.FC = () => {
     [image, input, loading],
   );
 
-  useEffect(() => {
-    // Focus input after loading completes if it was triggered by isExplain
-    if (!loading && shouldFocusAfterLoadRef.current) {
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-      shouldFocusAfterLoadRef.current = false;
-    }
-  }, [loading]);
-
   const onSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
@@ -115,8 +106,9 @@ const ChatBubble: React.FC = () => {
   useEffect(() => {
     const handler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
       setImage(dataUrl);
-      setIsExplain(isExplainMode);
       setMessages([]);
+      // Set initial tab based on isExplain, but user can switch
+      setActiveTab(isExplainMode ? 'explain' : 'chat');
 
       if (!isExplainMode) {
         // Use multiple requestAnimationFrame calls and a small timeout to ensure
@@ -146,68 +138,101 @@ const ChatBubble: React.FC = () => {
     window.overlayAPI?.onHide(handleOverlayHide);
   }, [setInput]);
 
+  // Focus input when switching to chat tab
+  useEffect(() => {
+    if (activeTab === 'chat' && image) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [activeTab, image]);
+
   return (
     <div className="chat-bubble">
       <div className="chat-header">
-        <div className="chat-title">In-Context Explain</div>
+        {image && (
+          <div className="tab-container">
+            <button
+              className={`tab-button ${activeTab === 'explain' ? 'active' : ''}`}
+              onClick={() => setActiveTab('explain')}
+              type="button"
+            >
+              Explain
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chat')}
+              type="button"
+            >
+              Chat
+            </button>
+          </div>
+        )}
+        {!image && (
+          <div className="chat-title">In-Context Explain</div>
+        )}
         <div className="chat-hint">Press Esc to hide</div>
         <button className="chat-close" type="button" onClick={() => window.overlayAPI?.hide()}>
           ✕
         </button>
       </div>
 
-      {isExplain && image ? (
-        <ExplainComponent image={image} />
-      ) : (
-        <>
-          {image && (
-            <div className="chat-preview">
-              <img src={image} alt="Screenshot preview" />
-            </div>
-          )}
+      {image && (
+        <div className="chat-preview">
+          <img src={image} alt="Screenshot preview" />
+        </div>
+      )}
 
-          <div ref={scrollRef} className="chat-messages">
-            {messages.map((message, index) => (
-              <div key={index} className={`chat-message chat-${message.role}`}>
-                <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
-                <div className="chat-content chat-content-markdown">
-                  <div className="md">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                    >
-                      {normalizeMd(message.content)}
-                    </ReactMarkdown>
+      {image && (
+        <>
+          <div className={`tab-content ${activeTab === 'explain' ? 'active' : 'hidden'}`}>
+            <ExplainComponent image={image} />
+          </div>
+          <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
+            <div ref={scrollRef} className="chat-messages">
+              {messages.map((message, index) => (
+                <div key={index} className={`chat-message chat-${message.role}`}>
+                  <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
+                  <div className="chat-content chat-content-markdown">
+                    <div className="md">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {normalizeMd(message.content)}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="chat-message chat-assistant">
-                <span className="chat-label">AI:</span>
-                <span className="chat-content">Thinking…</span>
-              </div>
-            )}
-          </div>
+              ))}
+              {loading && (
+                <div className="chat-message chat-assistant">
+                  <span className="chat-label">AI:</span>
+                  <span className="chat-content">Thinking…</span>
+                </div>
+              )}
+            </div>
 
-          <form className="chat-form" onSubmit={onSubmit}>
-            <input
-              autoFocus
-              ref={inputRef}
-              className="chat-input"
-              placeholder={image ? 'Ask about the screenshot…' : 'Capture a screenshot first'}
-              disabled={!image || loading}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-            />
-            <button className="chat-send" disabled={!image || loading} type="submit">
-              {loading ? 'Sending…' : 'Send'}
-            </button>
-          </form>
+            <form className="chat-form" onSubmit={onSubmit}>
+              <input
+                autoFocus
+                ref={inputRef}
+                className="chat-input"
+                placeholder={image ? 'Ask about the screenshot…' : 'Capture a screenshot first'}
+                disabled={!image || loading}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+              />
+              <button className="chat-send" disabled={!image || loading} type="submit">
+                {loading ? 'Sending…' : 'Send'}
+              </button>
+            </form>
+          </div>
         </>
       )}
     </div>
   );
 };
 
-export default ChatBubble;
+export default ExplainWindow;
+

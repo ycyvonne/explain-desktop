@@ -1,6 +1,11 @@
 declare global {
+  interface ScreenshotPayload {
+    dataUrl: string;
+    autoSend?: boolean;
+  }
+
   interface OverlayAPI {
-    onScreenshot: (cb: (dataUrl: string) => void) => void;
+    onScreenshot: (cb: (payload: ScreenshotPayload) => void) => void;
     hide: () => void;
   }
 

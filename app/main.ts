@@ -119,17 +119,24 @@ function showOverlayNearCursor() {
 app.whenReady().then(() => {
   createOverlay();
 
-  const shortcut = 'CommandOrControl+Shift+E';
-  const ok = globalShortcut.register(shortcut, async () => {
-    const capture = await captureRegion();
-    if (!capture) return;
-    showOverlayNearCursor();
-    overlay?.webContents.send('screenshot-ready', capture.dataUrl);
-  });
+  const registerShortcut = (accelerator: string, autoSend: boolean) => {
+    const ok = globalShortcut.register(accelerator, async () => {
+      const capture = await captureRegion();
+      if (!capture) return;
+      showOverlayNearCursor();
+      overlay?.webContents.send('screenshot-ready', {
+        dataUrl: capture.dataUrl,
+        autoSend,
+      });
+    });
 
-  if (!ok) {
-    console.error(`Failed to register global shortcut ${shortcut}`);
-  }
+    if (!ok) {
+      console.error(`Failed to register global shortcut ${accelerator}`);
+    }
+  };
+
+  registerShortcut('CommandOrControl+Shift+X', false);
+  registerShortcut('CommandOrControl+Shift+E', true);
 });
 
 app.on('window-all-closed', (event: Electron.Event) => {

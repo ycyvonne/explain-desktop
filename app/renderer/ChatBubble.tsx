@@ -17,23 +17,11 @@ const ChatBubble: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   useEffect(() => {
-    const handler = (dataUrl: string) => {
-      setImage(dataUrl);
-      setMessages([]);
-      setInput('Explain this.');
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    };
-
-    window.overlayAPI?.onScreenshot(handler);
-
-    return () => {
-      // No-op cleanup because preload removes listeners before re-registering
-    };
-  }, []);
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -53,36 +41,57 @@ const ChatBubble: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const send = useCallback(async () => {
-    if (!image || !input.trim() || loading) {
-      return;
-    }
+  type SendOptions = {
+    question?: string;
+    image?: string;
+    history?: Message[];
+    resetInput?: boolean;
+  };
 
-    const question = input.trim();
-    const history = [...messages, { role: 'user' as Role, content: question }];
+  const send = useCallback(
+    async (options: SendOptions = {}) => {
+      if (loading) {
+        return;
+      }
 
-    setInput('');
-    setMessages(history);
-    setLoading(true);
+      const activeImage = options.image ?? image;
+      const activeQuestionRaw = options.question ?? input;
+      const activeQuestion = activeQuestionRaw.trim();
+      const historyBase = options.history ?? messagesRef.current;
 
-    try {
-      const answer = await askLLM({
-        question,
-        screenshotDataUrl: image,
-        history: messages,
-      });
+      if (!activeImage || !activeQuestion) {
+        return;
+      }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Failed to reach assistant: ${message}` },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [image, input, loading, messages]);
+      if (options.resetInput ?? options.question === undefined) {
+        setInput('');
+      }
+
+      const userMessage: Message = { role: 'user', content: activeQuestion };
+
+      setMessages([...historyBase, userMessage]);
+      setLoading(true);
+
+      try {
+        const answer = await askLLM({
+          question: activeQuestion,
+          screenshotDataUrl: activeImage,
+          history: historyBase,
+        });
+
+        setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: `Failed to reach assistant: ${message}` },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [image, input, loading],
+  );
 
   const onSubmit = useCallback(
     (event: React.FormEvent) => {
@@ -91,6 +100,38 @@ const ChatBubble: React.FC = () => {
     },
     [send],
   );
+
+  useEffect(() => {
+    const handler = ({ dataUrl, autoSend = false }: ScreenshotPayload) => {
+      setImage(dataUrl);
+      setMessages([]);
+
+      if (autoSend) {
+        setInput('Explain this');
+      } else {
+        setInput('');
+      }
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+
+      if (autoSend) {
+        void send({
+          question: 'Explain this',
+          image: dataUrl,
+          history: [],
+          resetInput: false,
+        });
+      }
+    };
+
+    window.overlayAPI?.onScreenshot(handler);
+
+    return () => {
+      // No-op cleanup because preload removes listeners before re-registering
+    };
+  }, [send]);
 
   return (
     <div className="chat-bubble">

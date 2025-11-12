@@ -2,8 +2,12 @@
 
 A macOS-only Electron overlay that mirrors Claude Desktop's "Explain Screenshot" flow. Hit a global hotkey, capture a region with the native macOS selection UI, and chat about it in-place without losing context.
 
+## Global shortcuts
+- ⌘⇧E => Auto-explain
+- ⌘⇧X => Ask a question
+
 ## Features
-- ⌘⇧E global shortcut launches the native `screencapture -i` tool
+- Native `screencapture -i` tool
 - Floating, always-on-top overlay pinned near the cursor
 - Screenshot preview stays visible for follow-up questions
 - Chat history maintained locally in the renderer

@@ -34,13 +34,6 @@ const ChatBubble: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    const container = scrollRef.current;
-    if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         window.overlayAPI?.hide();

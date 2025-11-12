@@ -32,6 +32,8 @@ function createOverlay() {
   overlay = new BrowserWindow({
     width: 520,
     height: 400,
+    minWidth: 360,
+    minHeight: 280,
     frame: false,
     transparent: true,
     resizable: true,

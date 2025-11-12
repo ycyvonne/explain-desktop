@@ -420,3 +420,174 @@ input {
   margin-top: 8px;
   -webkit-app-region: no-drag;
 }
+
+/* Settings Component Styles */
+.settings-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.settings-description {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.settings-message {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.settings-error {
+  background: rgba(255, 59, 48, 0.15);
+  color: rgba(255, 59, 48, 0.9);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.settings-success {
+  background: rgba(52, 199, 89, 0.15);
+  color: rgba(52, 199, 89, 0.9);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(28, 28, 28, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(120, 120, 120, 0.3);
+}
+
+.shortcut-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.shortcut-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcut-display {
+  flex: 1;
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: rgba(134, 197, 255, 0.9);
+  padding: 6px 10px;
+  background: rgba(18, 18, 18, 0.6);
+  border-radius: 6px;
+  border: 1px solid rgba(120, 120, 120, 0.2);
+  min-width: 120px;
+  text-align: center;
+}
+
+.shortcut-editing {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shortcut-placeholder {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  padding: 6px 10px;
+  background: rgba(134, 197, 255, 0.1);
+  border-radius: 6px;
+  border: 1px dashed rgba(134, 197, 255, 0.4);
+  text-align: center;
+}
+
+.shortcut-edit,
+.shortcut-cancel {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(120, 120, 120, 0.4);
+  background: rgba(35, 35, 35, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.shortcut-edit:hover:not(:disabled) {
+  background: rgba(60, 60, 60, 0.9);
+  border-color: rgba(134, 197, 255, 0.5);
+}
+
+.shortcut-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shortcut-cancel {
+  background: rgba(255, 59, 48, 0.15);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: rgba(255, 59, 48, 0.9);
+}
+
+.shortcut-cancel:hover {
+  background: rgba(255, 59, 48, 0.25);
+  border-color: rgba(255, 59, 48, 0.5);
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.settings-reset {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(120, 120, 120, 0.4);
+  background: rgba(35, 35, 35, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.settings-reset:hover:not(:disabled) {
+  background: rgba(60, 60, 60, 0.9);
+  border-color: rgba(120, 120, 120, 0.6);
+}
+
+.settings-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

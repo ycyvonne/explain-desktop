@@ -13,6 +13,12 @@ type TextSelectionPayload = {
 type ScreenshotCallback = (payload: ScreenshotPayload) => void;
 type TextSelectionCallback = (payload: TextSelectionPayload) => void;
 
+type ShortcutConfig = {
+  screenshotChat: string;
+  screenshotExplain: string;
+  textSelection: string;
+};
+
 contextBridge.exposeInMainWorld('overlayAPI', {
   onScreenshot: (cb: ScreenshotCallback) => {
     ipcRenderer.removeAllListeners('screenshot-ready');
@@ -37,4 +43,22 @@ contextBridge.exposeInMainWorld('overlayAPI', {
     });
   },
   hide: () => ipcRenderer.send('overlay-hide'),
+});
+
+contextBridge.exposeInMainWorld('settingsAPI', {
+  getShortcuts: (): Promise<ShortcutConfig> => {
+    return ipcRenderer.invoke('settings:get-shortcuts');
+  },
+  updateShortcut: (key: keyof ShortcutConfig, accelerator: string): Promise<{ success: boolean; error?: string }> => {
+    return ipcRenderer.invoke('settings:update-shortcut', key, accelerator);
+  },
+  resetShortcuts: (): Promise<boolean> => {
+    return ipcRenderer.invoke('settings:reset-shortcuts');
+  },
+  disableShortcuts: (): Promise<void> => {
+    return ipcRenderer.invoke('settings:disable-shortcuts');
+  },
+  enableShortcuts: (): Promise<void> => {
+    return ipcRenderer.invoke('settings:enable-shortcuts');
+  },
 });

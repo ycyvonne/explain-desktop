@@ -9,6 +9,73 @@ const execFileP = promisify(execFile);
 let overlay: BrowserWindow | null = null;
 let escapeRegistered = false;
 
+type ShortcutConfig = {
+  screenshotChat: string;
+  screenshotExplain: string;
+  textSelection: string;
+};
+
+const DEFAULT_SHORTCUTS: ShortcutConfig = {
+  screenshotChat: 'CommandOrControl+Shift+X',
+  screenshotExplain: 'CommandOrControl+Shift+E',
+  textSelection: 'CommandOrControl+Shift+C',
+};
+
+// Protected system shortcuts that cannot be overridden
+const PROTECTED_SHORTCUTS = [
+  'CommandOrControl+C',      // Copy
+  'CommandOrControl+V',      // Paste
+  'CommandOrControl+X',      // Cut
+  'CommandOrControl+A',      // Select All
+  'CommandOrControl+Z',      // Undo
+  'CommandOrControl+Shift+Z', // Redo (macOS)
+  'CommandOrControl+Y',      // Redo (Windows/Linux)
+  'CommandOrControl+S',      // Save
+  'CommandOrControl+W',      // Close Window
+  'CommandOrControl+Q',      // Quit
+  'CommandOrControl+N',      // New
+  'CommandOrControl+O',      // Open
+  'CommandOrControl+P',      // Print
+  'CommandOrControl+T',      // New Tab
+  'CommandOrControl+Tab',   // Switch Tabs
+  'CommandOrControl+Space',  // Spotlight/Search
+  'CommandOrControl+Shift+Space', // Alternative search
+  'Escape',                 // Escape key
+];
+
+function isProtectedShortcut(accelerator: string): boolean {
+  return PROTECTED_SHORTCUTS.includes(accelerator);
+}
+
+let currentShortcuts: ShortcutConfig = { ...DEFAULT_SHORTCUTS };
+let registeredShortcuts: Map<string, () => void> = new Map();
+
+const CONFIG_PATH = path.join(app.getPath('userData'), 'shortcuts.json');
+
+async function loadShortcuts(): Promise<ShortcutConfig> {
+  try {
+    const data = await fs.readFile(CONFIG_PATH, 'utf-8');
+    const config = JSON.parse(data) as ShortcutConfig;
+    // Validate config
+    if (config.screenshotChat && config.screenshotExplain && config.textSelection) {
+      return config;
+    }
+  } catch (err) {
+    // File doesn't exist or is invalid, use defaults
+  }
+  return { ...DEFAULT_SHORTCUTS };
+}
+
+async function saveShortcuts(config: ShortcutConfig): Promise<void> {
+  try {
+    await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save shortcuts:', err);
+    throw err;
+  }
+}
+
 function ensureEscapeShortcut() {
   if (escapeRegistered) return;
   const ok = globalShortcut.register('Escape', () => {
@@ -217,30 +284,66 @@ function showOverlayNearCursor() {
   ensureEscapeShortcut();
 }
 
-app.whenReady().then(() => {
-  createOverlay();
+function unregisterAllShortcuts() {
+  registeredShortcuts.forEach((_, accelerator) => {
+    globalShortcut.unregister(accelerator);
+  });
+  registeredShortcuts.clear();
+}
 
-  const registerShortcut = (accelerator: string, isExplain: boolean) => {
-    const ok = globalShortcut.register(accelerator, async () => {
-      const capture = await captureRegion();
-      if (!capture) return;
-      showOverlayNearCursor();
-      overlay?.webContents.send('screenshot-ready', {
-        dataUrl: capture.dataUrl,
-        isExplain,
-      });
+async function registerShortcut(accelerator: string, handler: () => void): Promise<boolean> {
+  // Unregister if already registered
+  if (registeredShortcuts.has(accelerator)) {
+    globalShortcut.unregister(accelerator);
+  }
+  
+  const ok = globalShortcut.register(accelerator, handler);
+  if (ok) {
+    registeredShortcuts.set(accelerator, handler);
+  }
+  return ok;
+}
+
+async function registerAllShortcuts() {
+  if (shortcutsDisabled) {
+    return; // Don't register shortcuts if they're disabled
+  }
+  
+  unregisterAllShortcuts();
+  
+  // Register screenshot chat shortcut
+  const chatOk = await registerShortcut(currentShortcuts.screenshotChat, async () => {
+    if (shortcutsDisabled) return;
+    const capture = await captureRegion();
+    if (!capture) return;
+    showOverlayNearCursor();
+    overlay?.webContents.send('screenshot-ready', {
+      dataUrl: capture.dataUrl,
+      isExplain: false,
     });
+  });
+  if (!chatOk) {
+    console.error(`Failed to register global shortcut ${currentShortcuts.screenshotChat}`);
+  }
 
-    if (!ok) {
-      console.error(`Failed to register global shortcut ${accelerator}`);
-    }
-  };
+  // Register screenshot explain shortcut
+  const explainOk = await registerShortcut(currentShortcuts.screenshotExplain, async () => {
+    if (shortcutsDisabled) return;
+    const capture = await captureRegion();
+    if (!capture) return;
+    showOverlayNearCursor();
+    overlay?.webContents.send('screenshot-ready', {
+      dataUrl: capture.dataUrl,
+      isExplain: true,
+    });
+  });
+  if (!explainOk) {
+    console.error(`Failed to register global shortcut ${currentShortcuts.screenshotExplain}`);
+  }
 
-  registerShortcut('CommandOrControl+Shift+X', false);
-  registerShortcut('CommandOrControl+Shift+E', true);
-
-  // Register Cmd+Shift+C for text selection
-  const textShortcutOk = globalShortcut.register('CommandOrControl+Shift+C', async () => {
+  // Register text selection shortcut
+  const textOk = await registerShortcut(currentShortcuts.textSelection, async () => {
+    if (shortcutsDisabled) return;
     const selectedText = await captureSelectedText();
     if (!selectedText || !selectedText.trim()) {
       console.log('No text selected or captured');
@@ -253,10 +356,19 @@ app.whenReady().then(() => {
       isExplain: true,
     });
   });
-
-  if (!textShortcutOk) {
-    console.error('Failed to register global shortcut CommandOrControl+Shift+C');
+  if (!textOk) {
+    console.error(`Failed to register global shortcut ${currentShortcuts.textSelection}`);
   }
+}
+
+app.whenReady().then(async () => {
+  createOverlay();
+  
+  // Load shortcuts from config
+  currentShortcuts = await loadShortcuts();
+  
+  // Register all shortcuts
+  await registerAllShortcuts();
 });
 
 app.on('window-all-closed', (event: Electron.Event) => {
@@ -270,4 +382,73 @@ app.on('will-quit', () => {
 ipcMain.on('overlay-hide', () => {
   releaseEscapeShortcut();
   overlay?.hide();
+});
+
+ipcMain.handle('settings:get-shortcuts', async () => {
+  return currentShortcuts;
+});
+
+ipcMain.handle('settings:update-shortcut', async (_, key: keyof ShortcutConfig, accelerator: string) => {
+  // Check if shortcut is protected
+  if (isProtectedShortcut(accelerator)) {
+    return { success: false, error: 'This shortcut is protected and cannot be overridden' };
+  }
+  
+  // Check if accelerator is already in use
+  const isDuplicate = Object.values(currentShortcuts).some(
+    (value, idx) => {
+      const k = Object.keys(currentShortcuts)[idx] as keyof ShortcutConfig;
+      return k !== key && value === accelerator;
+    }
+  );
+  
+  if (isDuplicate) {
+    return { success: false, error: 'This shortcut is already in use' };
+  }
+  
+  // Try to register the new shortcut temporarily to check if it's available
+  const testHandler = () => {};
+  const testOk = globalShortcut.register(accelerator, testHandler);
+  if (!testOk) {
+    return { success: false, error: 'This shortcut is in use by another application' };
+  }
+  globalShortcut.unregister(accelerator);
+  
+  // Update the shortcut
+  const oldAccelerator = currentShortcuts[key];
+  currentShortcuts[key] = accelerator;
+  
+  try {
+    await saveShortcuts(currentShortcuts);
+    await registerAllShortcuts();
+    return { success: true };
+  } catch (err) {
+    // Revert on error
+    currentShortcuts[key] = oldAccelerator;
+    await registerAllShortcuts();
+    return { success: false, error: 'Failed to save shortcut' };
+  }
+});
+
+ipcMain.handle('settings:reset-shortcuts', async () => {
+  currentShortcuts = { ...DEFAULT_SHORTCUTS };
+  try {
+    await saveShortcuts(currentShortcuts);
+    await registerAllShortcuts();
+    return true;
+  } catch (err) {
+    return false;
+  }
+});
+
+let shortcutsDisabled = false;
+
+ipcMain.handle('settings:disable-shortcuts', () => {
+  shortcutsDisabled = true;
+  unregisterAllShortcuts();
+});
+
+ipcMain.handle('settings:enable-shortcuts', async () => {
+  shortcutsDisabled = false;
+  await registerAllShortcuts();
 });

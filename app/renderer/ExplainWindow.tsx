@@ -8,6 +8,7 @@ import 'katex/dist/katex.min.css';
 import askLLM from './llm';
 import { normalizeMd } from './utils';
 import ExplainComponent from './ExplainComponent';
+import SettingsComponent from './SettingsComponent';
 
 type Role = 'user' | 'assistant';
 
@@ -16,7 +17,7 @@ type Message = {
   content: string;
 };
 
-type Tab = 'explain' | 'chat';
+type Tab = 'explain' | 'chat' | 'settings';
 
 const ExplainWindow: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -119,7 +120,10 @@ const ExplainWindow: React.FC = () => {
       setShowExplanationContext(false);
       setExplainKey((prev) => prev + 1);
       // Set initial tab based on isExplain, but user can switch
-      setActiveTab(isExplainMode ? 'explain' : 'chat');
+      // Only set to explain/chat if we have content, otherwise keep current tab
+      if (dataUrl) {
+        setActiveTab(isExplainMode ? 'explain' : 'chat');
+      }
 
       if (!isExplainMode) {
         // Use multiple requestAnimationFrame calls and a small timeout to ensure
@@ -141,7 +145,10 @@ const ExplainWindow: React.FC = () => {
       setExplanation('');
       setShowExplanationContext(false);
       setExplainKey((prev) => prev + 1);
-      setActiveTab(isExplainMode ? 'explain' : 'chat');
+      // Only set to explain/chat if we have content, otherwise keep current tab
+      if (text) {
+        setActiveTab(isExplainMode ? 'explain' : 'chat');
+      }
 
       if (!isExplainMode) {
         requestAnimationFrame(() => {
@@ -198,24 +205,33 @@ const ExplainWindow: React.FC = () => {
   return (
     <div className="chat-bubble">
       <div className="chat-header">
-        {(image || selectedText) && (
-          <div className="tab-container">
-            <button
-              className={`tab-button ${activeTab === 'explain' ? 'active' : ''}`}
-              onClick={() => setActiveTab('explain')}
-              type="button"
-            >
-              Explain
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chat')}
-              type="button"
-            >
-              Chat
-            </button>
-          </div>
-        )}
+        <div className="tab-container">
+          {(image || selectedText) && (
+            <>
+              <button
+                className={`tab-button ${activeTab === 'explain' ? 'active' : ''}`}
+                onClick={() => setActiveTab('explain')}
+                type="button"
+              >
+                Explain
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chat')}
+                type="button"
+              >
+                Chat
+              </button>
+            </>
+          )}
+          <button
+            className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+            type="button"
+          >
+            Settings
+          </button>
+        </div>
         {!image && !selectedText && (
           <div className="chat-title">In-Context Explain</div>
         )}
@@ -225,13 +241,13 @@ const ExplainWindow: React.FC = () => {
         </button>
       </div>
 
-      {image && (
+      {image && activeTab !== 'settings' && (
         <div className="chat-preview">
           <img src={image} alt="Screenshot preview" />
         </div>
       )}
 
-      {selectedText && (
+      {selectedText && activeTab !== 'settings' && (
         <div className="chat-preview" style={{ padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px', margin: '8px', maxHeight: '150px', overflow: 'auto' }}>
           <div style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-wrap' }}>{selectedText}</div>
         </div>
@@ -334,6 +350,9 @@ const ExplainWindow: React.FC = () => {
           </div>
         </>
       )}
+      <div className={`tab-content ${activeTab === 'settings' ? 'active' : 'hidden'}`}>
+        <SettingsComponent />
+      </div>
     </div>
   );
 };

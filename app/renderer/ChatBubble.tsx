@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import askLLM from './llm';
 
 type Role = 'user' | 'assistant';
@@ -9,6 +10,14 @@ type Message = {
   role: Role;
   content: string;
 };
+
+function normalizeMd(md: string) {
+  return md
+    // Join lines that are only "1." / "2." etc. with the following line.
+    .replace(/(^|\n)(\s*)(\d+)\.\s*\n(?!\s*[-*+]|\s*\d+\.)/g, '$1$2$3. ')
+    // (optional) Fix bullets that lost a space: "-text" -> "- text"
+    .replace(/(^|\n)(\s*)-([^\s-])/g, '$1$2- $3');
+}
 
 const ChatBubble: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -156,7 +165,9 @@ const ChatBubble: React.FC = () => {
           <div key={index} className={`chat-message chat-${message.role}`}>
             <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
             <div className="chat-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                {normalizeMd(message.content)}
+              </ReactMarkdown>
             </div>
           </div>
         ))}

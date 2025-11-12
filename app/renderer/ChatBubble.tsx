@@ -164,10 +164,12 @@ const ChatBubble: React.FC = () => {
         {messages.map((message, index) => (
           <div key={index} className={`chat-message chat-${message.role}`}>
             <span className="chat-label">{message.role === 'user' ? 'You' : 'AI'}:</span>
-            <div className="chat-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                {normalizeMd(message.content)}
-              </ReactMarkdown>
+            <div className="chat-content chat-content-markdown">
+              <div className="md">
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                  {normalizeMd(message.content)}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}

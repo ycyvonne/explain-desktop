@@ -167,3 +167,53 @@ input {
 .chat-send:not(:disabled):hover {
   background: rgba(60, 60, 60, 0.9);
 }
+
+.chat-content-markdown {
+  margin-top: -15px;
+}
+
+/* Scope all markdown inside a wrapper, e.g. <div class="md"> ... */
+.chat-content .md {
+  /* undo the chat bubble's pre-wrap so lists/paragraphs behave normally */
+  white-space: normal;
+}
+
+/* keep code blocks intact */
+.chat-content .md pre { white-space: pre; }
+
+/* sane list defaults */
+.chat-content .md ol,
+.chat-content .md ul {
+  list-style-position: outside;
+  margin: 0 0 .75rem 1.25rem;
+  padding: 0;
+}
+
+.chat-content .md li { margin: .25rem 0; }
+
+/* keep number/bullet and first paragraph on the same line */
+.chat-content .md li > p {
+  display: inline;
+  margin: 0;
+}
+
+/* nested lists get a little breathing room */
+.chat-content .md li > ul,
+.chat-content .md li > ol { margin-top: .25rem; }
+
+/* optional niceties */
+.chat-content .md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: .9em;
+  background: rgba(127,127,127,.15);
+  padding: 0 .3rem;
+  border-radius: .25rem;
+}
+.chat-content .md pre {
+  background: rgba(127,127,127,.15);
+  padding: .75rem;
+  border-radius: .5rem;
+  overflow: auto;
+  margin: .5rem 0;
+}
+.chat-content .md pre code { all: unset; }

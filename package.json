@@ -1,12 +1,13 @@
 {
-  "name": "explain-desktop",
+  "name": "GhostKey",
   "version": "0.1.0",
-  "description": "Floating overlay app for screenshot explanations",
-  "main": "dist/main.js",
+  "description": "Floating overlay app for text and screenshot explanations",
+    "main": "dist/main.js",
   "scripts": {
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "tsc --project tsconfig.main.json",
     "build:renderer": "vite build",
+    "dist": "npm run build && electron-builder --mac",
     "start": "npm run build && electron dist/main.js"
   },
   "dependencies": {
@@ -26,7 +27,28 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^30.0.9",
+    "electron-builder": "^26.0.12",
     "typescript": "^5.5.3",
     "vite": "^5.3.4"
+  },
+  "build": {
+    "appId": "com.ghostkey.myapp",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    }
   }
 }

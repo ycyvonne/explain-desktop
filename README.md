@@ -1,4 +1,4 @@
-# explain-desktop
+# GhostKey
 
 A macOS-only Electron overlay that mirrors Claude Desktop's "Explain Screenshot" flow. Hit a global hotkey, capture a region with the native macOS selection UI, and chat about it in-place without losing context.
 

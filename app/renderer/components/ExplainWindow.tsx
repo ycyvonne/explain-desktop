@@ -118,7 +118,7 @@ const ExplainWindow: React.FC = () => {
           hasContent={hasContent}
         />
         {!hasContent && (
-          <div className="chat-title">In-Context Explain</div>
+          <div className="chat-title">GhostKey: Instant Explanations</div>
         )}
         <div className="chat-hint">Press Esc to hide</div>
         <button className="chat-close" type="button" onClick={() => window.overlayAPI?.hide()}>

@@ -1,48 +1,11 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen, clipboard } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { triggerCopyCommand, delay } from './utils';
 import { toErrorMessage } from './errorUtils';
 import type { ShortcutConfig } from './types';
-
-const execFileP = promisify(execFile);
-
-let overlay: BrowserWindow | null = null;
-let escapeRegistered = false;
-
-const DEFAULT_SHORTCUTS: ShortcutConfig = {
-  screenshotChat: 'CommandOrControl+Shift+X',
-  screenshotExplain: 'CommandOrControl+Shift+E',
-  textSelection: 'CommandOrControl+Shift+C',
-};
-
-// Protected system shortcuts that cannot be overridden
-const PROTECTED_SHORTCUTS = [
-  'CommandOrControl+C',      // Copy
-  'CommandOrControl+V',      // Paste
-  'CommandOrControl+X',      // Cut
-  'CommandOrControl+A',      // Select All
-  'CommandOrControl+Z',      // Undo
-  'CommandOrControl+Shift+Z', // Redo (macOS)
-  'CommandOrControl+Y',      // Redo (Windows/Linux)
-  'CommandOrControl+S',      // Save
-  'CommandOrControl+W',      // Close Window
-  'CommandOrControl+Q',      // Quit
-  'CommandOrControl+N',      // New
-  'CommandOrControl+O',      // Open
-  'CommandOrControl+P',      // Print
-  'CommandOrControl+T',      // New Tab
-  'CommandOrControl+Tab',   // Switch Tabs
-  'CommandOrControl+Space',  // Spotlight/Search
-  'CommandOrControl+Shift+Space', // Alternative search
-  'Escape',                 // Escape key
-];
-
-function isProtectedShortcut(accelerator: string): boolean {
-  return PROTECTED_SHORTCUTS.includes(accelerator);
-}
+import { DEFAULT_SHORTCUTS, isProtectedShortcut } from './main/config';
+import { createOverlay, hideOverlay, sendToOverlay, showOverlayNearCursor } from './main/overlay';
+import { captureRegion, captureSelectedText } from './main/capture';
 
 let currentShortcuts: ShortcutConfig = { ...DEFAULT_SHORTCUTS };
 let registeredShortcuts: Map<string, () => void> = new Map();
@@ -73,147 +36,7 @@ async function saveShortcuts(config: ShortcutConfig): Promise<void> {
   }
 }
 
-function ensureEscapeShortcut() {
-  if (escapeRegistered) return;
-  const ok = globalShortcut.register('Escape', () => {
-    if (!overlay || overlay.isDestroyed() || !overlay.isVisible()) return;
-    overlay.hide();
-  });
-  if (!ok) {
-    console.warn('Failed to register Escape shortcut for overlay');
-    return;
-  }
-  escapeRegistered = true;
-}
-
-function releaseEscapeShortcut() {
-  if (!escapeRegistered) return;
-  globalShortcut.unregister('Escape');
-  escapeRegistered = false;
-}
-
-function createOverlay() {
-  overlay = new BrowserWindow({
-    width: 720,
-    height: 600,
-    minWidth: 360,
-    minHeight: 280,
-    frame: false,
-    transparent: true,
-    resizable: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    hasShadow: true,
-    focusable: true,
-    fullscreenable: false,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-    },
-  });
-  
-  const rendererPath = path.join(__dirname, 'renderer', 'index.html');
-  overlay.loadFile(rendererPath).catch((err) => {
-    console.error('Failed to load renderer:', toErrorMessage(err));
-  });
-
-  overlay.on('closed', () => {
-    releaseEscapeShortcut();
-    overlay = null;
-  });
-
-  overlay.on('hide', () => {
-    overlay?.webContents.send('overlay-hidden');
-    releaseEscapeShortcut();
-  });
-}
-
-async function captureRegion(): Promise<{ dataUrl: string } | null> {
-  const tmp = path.join(app.getPath('temp'), `icx-${Date.now()}.png`);
-  try {
-    await execFileP('/usr/sbin/screencapture', ['-i', '-x', tmp]);
-  } catch (error) {
-    if ((error as Error).message) {
-      console.warn('Capture cancelled or failed:', toErrorMessage(error));
-    }
-    return null;
-  }
-
-  try {
-    const buf = await fs.readFile(tmp);
-    const dataUrl = `data:image/png;base64,${buf.toString('base64')}`;
-    await fs.unlink(tmp).catch(() => undefined);
-    return { dataUrl };
-  } catch (err) {
-    console.error('Failed to read captured image:', toErrorMessage(err));
-    return null;
-  }
-}
-
-
-async function captureSelectedText(): Promise<string | null> {
-  const originalText = clipboard.readText();
-
-    try {
-    await triggerCopyCommand();
-
-    const maxAttempts = 10;
-    let capturedText = clipboard.readText();
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const didChange = originalText === '' ? capturedText !== '' : capturedText !== originalText;
-
-      if (didChange) {
-        break;
-      }
-
-      await delay(80);
-      capturedText = clipboard.readText();
-    }
-
-    const didChange =
-      originalText === '' ? capturedText !== '' : capturedText !== originalText;
-
-    if (!didChange) {
-      return null;
-    }
-    
-    return capturedText || null;
-  } catch (error) {
-    console.error('Failed to capture selected text:', toErrorMessage(error));
-    return null;
-  } finally {
-    clipboard.writeText(originalText);
-  }
-}
-
-function showOverlayNearCursor() {
-  if (!overlay) {
-    createOverlay();
-  }
-  if (!overlay) return;
-
-  const cursorPoint = screen.getCursorScreenPoint();
-  const displayBounds = screen.getDisplayNearestPoint(cursorPoint).workArea;
-  const { width: overlayWidth, height: overlayHeight } = overlay.getBounds();
-  // Center the window on the screen
-  const targetX = displayBounds.x + (displayBounds.width - overlayWidth) / 2;
-  const targetY = displayBounds.y + (displayBounds.height - overlayHeight) / 2;
-  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  overlay.setAlwaysOnTop(true, 'screen-saver');
-  overlay.setBounds({ x: targetX, y: targetY, width: overlayWidth, height: overlayHeight });
-  overlay.showInactive();
-  setTimeout(() => {
-    if (!overlay || overlay.isDestroyed()) return;
-    overlay.setVisibleOnAllWorkspaces(false);
-  }, 0);
-  setTimeout(() => {
-    if (!overlay || overlay.isDestroyed()) return;
-    overlay.webContents.focus();
-  }, 0);
-  ensureEscapeShortcut();
-}
+// overlay helpers moved to ./main/overlay
 
 function unregisterAllShortcuts() {
   registeredShortcuts.forEach((_, accelerator) => {
@@ -248,7 +71,7 @@ async function registerAllShortcuts() {
     const capture = await captureRegion();
     if (!capture) return;
     showOverlayNearCursor();
-    overlay?.webContents.send('screenshot-ready', {
+    sendToOverlay('screenshot-ready', {
       dataUrl: capture.dataUrl,
       isExplain: false,
     });
@@ -263,7 +86,7 @@ async function registerAllShortcuts() {
     const capture = await captureRegion();
     if (!capture) return;
     showOverlayNearCursor();
-    overlay?.webContents.send('screenshot-ready', {
+    sendToOverlay('screenshot-ready', {
       dataUrl: capture.dataUrl,
       isExplain: true,
     });
@@ -282,7 +105,7 @@ async function registerAllShortcuts() {
     }
     
     showOverlayNearCursor();
-    overlay?.webContents.send('text-selection-ready', {
+    sendToOverlay('text-selection-ready', {
       text: selectedText,
       isExplain: true,
     });
@@ -311,8 +134,7 @@ app.on('will-quit', () => {
 });
 
 ipcMain.on('overlay-hide', () => {
-  releaseEscapeShortcut();
-  overlay?.hide();
+  hideOverlay();
 });
 
 ipcMain.handle('settings:get-shortcuts', async () => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toErrorMessage } from '../../errorUtils';
 import ShortcutInput from './ShortcutInput';
 import {
   DEFAULT_SHORTCUTS,
@@ -53,7 +54,7 @@ const SettingsComponent: React.FC = () => {
         setError(result?.error || 'Failed to update shortcut. It may be in use by another application.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update shortcut');
+      setError(toErrorMessage(err) || 'Failed to update shortcut');
     }
   };
 
@@ -66,7 +67,7 @@ const SettingsComponent: React.FC = () => {
         setTimeout(() => setSuccess(null), 2000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset shortcuts');
+      setError(toErrorMessage(err) || 'Failed to reset shortcuts');
     }
   };
 

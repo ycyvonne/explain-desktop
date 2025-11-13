@@ -1,3 +1,5 @@
+import type { ShortcutConfig } from '../../types';
+
 /**
  * Protected system shortcuts that cannot be overridden
  * Must match the list in app/main.ts
@@ -23,11 +25,8 @@ export const PROTECTED_SHORTCUTS = [
   'Escape',                 // Escape key
 ] as const;
 
-export type ShortcutConfig = {
-  textSelection: string;
-  screenshotChat: string;
-  screenshotExplain: string;
-};
+// Re-export for convenience
+export type { ShortcutConfig };
 
 export const DEFAULT_SHORTCUTS: ShortcutConfig = {
   textSelection: 'CommandOrControl+Shift+C',

@@ -4,17 +4,13 @@ import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { triggerCopyCommand, delay } from './utils';
+import { toErrorMessage } from './errorUtils';
+import type { ShortcutConfig } from './types';
 
 const execFileP = promisify(execFile);
 
 let overlay: BrowserWindow | null = null;
 let escapeRegistered = false;
-
-type ShortcutConfig = {
-  screenshotChat: string;
-  screenshotExplain: string;
-  textSelection: string;
-};
 
 const DEFAULT_SHORTCUTS: ShortcutConfig = {
   screenshotChat: 'CommandOrControl+Shift+X',
@@ -72,7 +68,7 @@ async function saveShortcuts(config: ShortcutConfig): Promise<void> {
     await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
     await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Failed to save shortcuts:', err);
+    console.error('Failed to save shortcuts:', toErrorMessage(err));
     throw err;
   }
 }
@@ -119,7 +115,7 @@ function createOverlay() {
   
   const rendererPath = path.join(__dirname, 'renderer', 'index.html');
   overlay.loadFile(rendererPath).catch((err) => {
-    console.error('Failed to load renderer:', err);
+    console.error('Failed to load renderer:', toErrorMessage(err));
   });
 
   overlay.on('closed', () => {
@@ -139,7 +135,7 @@ async function captureRegion(): Promise<{ dataUrl: string } | null> {
     await execFileP('/usr/sbin/screencapture', ['-i', '-x', tmp]);
   } catch (error) {
     if ((error as Error).message) {
-      console.warn('Capture cancelled or failed:', (error as Error).message);
+      console.warn('Capture cancelled or failed:', toErrorMessage(error));
     }
     return null;
   }
@@ -150,7 +146,7 @@ async function captureRegion(): Promise<{ dataUrl: string } | null> {
     await fs.unlink(tmp).catch(() => undefined);
     return { dataUrl };
   } catch (err) {
-    console.error('Failed to read captured image:', err);
+    console.error('Failed to read captured image:', toErrorMessage(err));
     return null;
   }
 }
@@ -159,7 +155,7 @@ async function captureRegion(): Promise<{ dataUrl: string } | null> {
 async function captureSelectedText(): Promise<string | null> {
   const originalText = clipboard.readText();
 
-  try {
+    try {
     await triggerCopyCommand();
 
     const maxAttempts = 10;
@@ -182,10 +178,10 @@ async function captureSelectedText(): Promise<string | null> {
     if (!didChange) {
       return null;
     }
-
+    
     return capturedText || null;
   } catch (error) {
-    console.error('Failed to capture selected text:', error);
+    console.error('Failed to capture selected text:', toErrorMessage(error));
     return null;
   } finally {
     clipboard.writeText(originalText);

@@ -1,3 +1,5 @@
+import type { ShortcutConfig } from '../types';
+
 declare global {
   interface ScreenshotPayload {
     dataUrl: string;
@@ -8,12 +10,6 @@ declare global {
     text: string;
     isExplain?: boolean;
   }
-
-  type ShortcutConfig = {
-    screenshotChat: string;
-    screenshotExplain: string;
-    textSelection: string;
-  };
 
   interface OverlayAPI {
     onScreenshot: (cb: (payload: ScreenshotPayload) => void) => void;
@@ -34,6 +30,9 @@ declare global {
     overlayAPI?: OverlayAPI;
     settingsAPI?: SettingsAPI;
   }
+
+  // Re-export ShortcutConfig for global use
+  type ShortcutConfig = import('../types').ShortcutConfig;
 }
 
 export {};

@@ -1,12 +1,9 @@
 import React, { useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import { normalizeMd } from '../utils/utils';
 import { Message } from '../hooks/useExplainWindowState';
 import { useFocusInputImmediate } from '../hooks/useFocusInput';
+import { MARKDOWN_REHYPE_PLUGINS, MARKDOWN_REMARK_PLUGINS } from '../utils/markdownConfig';
 
 type ChatTabProps = {
   messages: Message[];
@@ -60,39 +57,19 @@ const ChatTab: React.FC<ChatTabProps> = ({
   return (
     <div className={`tab-content ${activeTab === 'chat' ? 'active' : 'hidden'}`}>
       {showExplanationContext && explanation && (
-        <div className="chat-preview" style={{ padding: '12px', backgroundColor: 'rgba(28, 28, 28, 0.95)', borderRadius: '8px', marginBottom: '12px', border: '1px solid rgba(120, 120, 120, 0.4)', maxHeight: '50px', position: 'relative' }}>
+        <div className="chat-preview explain-context-preview">
           <button
             type="button"
             onClick={onCloseExplanationContext}
-            style={{
-              position: 'absolute',
-              top: '4px',
-              right: '4px',
-              background: 'none',
-              border: 'none',
-              color: 'rgba(255, 255, 255, 0.6)',
-              cursor: 'pointer',
-              padding: '4px',
-              zIndex: 10,
-              fontSize: '12px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.95)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
-            }}
+            className="explain-context-close"
             title="Close context"
           >
             ✕
           </button>
-          <div style={{ maxHeight: '50px', overflow: 'auto', paddingRight: '24px' }}>
-            <div className="chat-content chat-content-markdown" style={{ fontSize: '13px' }}>
+          <div className="explain-context-scroll">
+            <div className="chat-content chat-content-markdown explain-context-text">
               <div className="md">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
+                <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} rehypePlugins={MARKDOWN_REHYPE_PLUGINS}>
                   {normalizeMd(explanation)}
                 </ReactMarkdown>
               </div>
@@ -107,8 +84,8 @@ const ChatTab: React.FC<ChatTabProps> = ({
             <div className="chat-content chat-content-markdown">
               <div className="md">
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                  rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
                 >
                   {normalizeMd(message.content)}
                 </ReactMarkdown>

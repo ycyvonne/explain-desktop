@@ -21,8 +21,8 @@ const ContentPreview: React.FC<ContentPreviewProps> = ({ image, selectedText, ac
 
   if (selectedText) {
     return (
-      <div className="chat-preview" style={{ padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '4px', margin: '8px', maxHeight: '150px', overflow: 'auto' }}>
-        <div style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-wrap' }}>{selectedText}</div>
+      <div className="chat-preview text-selection-preview">
+        <div className="text-selection-content">{selectedText}</div>
       </div>
     );
   }

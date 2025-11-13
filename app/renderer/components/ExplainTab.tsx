@@ -1,5 +1,6 @@
 import React from 'react';
-import ExplainComponent, { ExplainCache } from './ExplainComponent';
+import ExplainComponent from './ExplainComponent';
+import type { ExplainCache } from '../hooks/useExplanation';
 
 type ExplainTabProps = {
   activeTab: string;

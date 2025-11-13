@@ -1,4 +1,5 @@
 import { useCallback, RefObject } from 'react';
+import { toErrorMessage } from '../../errorUtils';
 import askLLM from '../services/llm';
 import { Message } from './useExplainWindowState';
 
@@ -67,7 +68,7 @@ export function useChatSend(
 
         setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = toErrorMessage(error);
         setMessages((prev) => [
           ...prev,
           { role: 'assistant', content: `Failed to reach assistant: ${message}` },

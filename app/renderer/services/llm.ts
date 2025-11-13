@@ -1,8 +1,41 @@
+type SupportedRole = 'system' | 'user' | 'assistant';
+
+type HistoryMessage = {
+  role: Exclude<SupportedRole, 'system'>;
+  content: string;
+};
+
+type TextContentPart = { type: 'text'; text: string };
+type ImageContentPart = { type: 'image_url'; image_url: { url: string } };
+type RichContent = Array<TextContentPart | ImageContentPart>;
+
+type ChatCompletionMessage = {
+  role: SupportedRole;
+  content: string | RichContent;
+};
+
+type ChatCompletionChoice = {
+  index: number;
+  finish_reason: string;
+  message: {
+    role: SupportedRole;
+    content: string | RichContent | null;
+  };
+};
+
+type ChatCompletionResponse = {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: ChatCompletionChoice[];
+};
+
 type AskArgs = {
   question: string;
   screenshotDataUrl?: string;
   text?: string;
-  history: { role: 'user' | 'assistant'; content: string }[];
+  history: HistoryMessage[];
 };
 
 export default async function askLLM({
@@ -31,7 +64,7 @@ export default async function askLLM({
   
   systemPrompt += " If the context is code, explain what it does. Do not repeat the question or context in your answer.";
 
-  let userContent: any;
+  let userContent: string | RichContent;
   if (screenshotDataUrl) {
     userContent = [
       { type: 'text', text: question },
@@ -43,13 +76,13 @@ export default async function askLLM({
     throw new Error('Either screenshotDataUrl or text must be provided');
   }
 
-  const messages = [
+  const messages: ChatCompletionMessage[] = [
     { role: 'system', content: systemPrompt },
     ...history.map((message) => ({ role: message.role, content: message.content })),
     {
       role: 'user',
       content: userContent,
-    } as any,
+    },
   ];
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -70,7 +103,26 @@ export default async function askLLM({
     throw new Error(`LLM error: ${text}`);
   }
 
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-  return content ?? '(no response)';
+  const data: ChatCompletionResponse = await response.json();
+  const choice = data.choices?.[0];
+  if (!choice) {
+    return '(no response)';
+  }
+
+  const { content } = choice.message;
+  if (typeof content === 'string') {
+    return content || '(no response)';
+  }
+
+  if (Array.isArray(content)) {
+    // Collect text parts (ignore images on response)
+    const textParts = content.filter(
+      (part): part is TextContentPart => part.type === 'text'
+    );
+    if (textParts.length > 0) {
+      return textParts.map((part) => part.text).join('\n\n');
+    }
+  }
+
+  return '(no response)';
 }

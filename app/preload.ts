@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { ShortcutConfig } from './types';
 
 type ScreenshotPayload = {
   dataUrl: string;
@@ -12,12 +13,6 @@ type TextSelectionPayload = {
 
 type ScreenshotCallback = (payload: ScreenshotPayload) => void;
 type TextSelectionCallback = (payload: TextSelectionPayload) => void;
-
-type ShortcutConfig = {
-  screenshotChat: string;
-  screenshotExplain: string;
-  textSelection: string;
-};
 
 contextBridge.exposeInMainWorld('overlayAPI', {
   onScreenshot: (cb: ScreenshotCallback) => {

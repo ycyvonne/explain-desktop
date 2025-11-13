@@ -46,35 +46,35 @@ const ExplainWindow: React.FC = () => {
 
   // Setup overlay handlers
   useEffect(() => {
-    const screenshotHandler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
-      state.setImage(dataUrl);
-      state.setSelectedText(null);
+    const handleNewContext = ({
+      nextImage,
+      nextText,
+      isExplainMode,
+    }: {
+      nextImage?: string | null;
+      nextText?: string | null;
+      isExplainMode: boolean;
+    }) => {
+      state.setImage(nextImage ?? null);
+      state.setSelectedText(nextText ?? null);
       state.setMessages([]);
       state.setExplanation('');
       state.setShowExplanationContext(false);
-      // Clear cache for previous input when new input arrives
       explainCache.clear();
       setExplainKey((prev) => prev + 1);
-      // Set initial tab based on isExplain, but user can switch
-      // Only set to explain/chat if we have content, otherwise keep current tab
-      if (dataUrl) {
+
+      const hasContent = Boolean(nextImage ?? nextText);
+      if (hasContent) {
         setActiveTab(isExplainMode ? 'explain' : 'chat');
       }
     };
 
+    const screenshotHandler = ({ dataUrl, isExplain: isExplainMode = false }: ScreenshotPayload) => {
+      handleNewContext({ nextImage: dataUrl, nextText: null, isExplainMode });
+    };
+
     const textSelectionHandler = ({ text, isExplain: isExplainMode = true }: TextSelectionPayload) => {
-      state.setSelectedText(text);
-      state.setImage(null);
-      state.setMessages([]);
-      state.setExplanation('');
-      state.setShowExplanationContext(false);
-      // Clear cache for previous input when new input arrives
-      explainCache.clear();
-      setExplainKey((prev) => prev + 1);
-      // Only set to explain/chat if we have content, otherwise keep current tab
-      if (text) {
-        setActiveTab(isExplainMode ? 'explain' : 'chat');
-      }
+      handleNewContext({ nextImage: null, nextText: text, isExplainMode });
       // Note: Focus is handled by ChatTab component when tab becomes active
     };
 

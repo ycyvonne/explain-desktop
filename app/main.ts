@@ -3,6 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { triggerCopyCommand, delay } from './utils';
 
 const execFileP = promisify(execFile);
 
@@ -154,106 +155,40 @@ async function captureRegion(): Promise<{ dataUrl: string } | null> {
   }
 }
 
-function sendCmdCWithKeyCode(): Promise<void> {
-  // Using key code 8 (C key) - works better with VSCode and Chrome
-  return new Promise((resolve, reject) => {
-    execFile(
-      '/usr/bin/osascript',
-      [
-        '-e', 'tell application "System Events"',
-        '-e', 'set frontApp to name of first application process whose frontmost is true',
-        '-e', 'tell application process frontApp',
-        '-e', 'key code 8 using command down',
-        '-e', 'end tell',
-        '-e', 'end tell',
-      ],
-      (err) => {
-        if (err) reject(err);
-        else resolve();
-      }
-    );
-  });
-}
-
-function sendCmdCWithKeystroke(): Promise<void> {
-  // Using keystroke - works better with Terminal
-  return new Promise((resolve, reject) => {
-    execFile(
-      '/usr/bin/osascript',
-      ['-e', 'tell application "System Events" to keystroke "c" using {command down}'],
-      (err) => {
-        if (err) reject(err);
-        else resolve();
-      }
-    );
-  });
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function captureSelectedText(): Promise<string | null> {
+  const originalText = clipboard.readText();
+
   try {
-    const previousClipboardText = clipboard.readText(); // Save original clipboard
-    
-    // Try key code method first (works better with VSCode/Chrome)
-    try {
-      await sendCmdCWithKeyCode();
-      await delay(100);
-    } catch (err) {
-      // If key code fails, try keystroke method
-      await sendCmdCWithKeystroke();
-      await delay(100);
-    }
-    
-    // Poll the clipboard to see if it changed (with timeout)
-    let captured = clipboard.readText();
-    const maxAttempts = 8;
-    let attempts = 0;
-    
-    // If clipboard didn't change, wait a bit more and check again
-    while (captured === previousClipboardText && attempts < maxAttempts) {
-      await delay(100);
-      captured = clipboard.readText();
-      attempts++;
-    }
-    
-    // If we still have the same text, try the other method
-    if (captured === previousClipboardText && previousClipboardText !== '') {
-      try {
-        await sendCmdCWithKeystroke(); // Try keystroke method (for Terminal)
-        await delay(100);
-        captured = clipboard.readText();
-      } catch (err) {
-        // If that fails, try key code again
-        try {
-          await sendCmdCWithKeyCode();
-          await delay(100);
-          captured = clipboard.readText();
-        } catch (err2) {
-          // Both methods failed, but continue to check clipboard
-        }
+    await triggerCopyCommand();
+
+    const maxAttempts = 10;
+    let capturedText = clipboard.readText();
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const didChange = originalText === '' ? capturedText !== '' : capturedText !== originalText;
+
+      if (didChange) {
+        break;
       }
+
+      await delay(80);
+      capturedText = clipboard.readText();
     }
-    
-    // Only return if we got something different (or if previous was empty and we got something)
-    if (captured !== previousClipboardText || (previousClipboardText === '' && captured !== '')) {
-      // Restore original clipboard contents
-      if (previousClipboardText) {
-        clipboard.writeText(previousClipboardText);
-      }
-      return captured || null;
+
+    const didChange =
+      originalText === '' ? capturedText !== '' : capturedText !== originalText;
+
+    if (!didChange) {
+      return null;
     }
-    
-    // // Restore original clipboard contents
-    // if (previousClipboardText) {
-    //   clipboard.writeText(previousClipboardText);
-    // }
-    return null;
+
+    return capturedText || null;
   } catch (error) {
     console.error('Failed to capture selected text:', error);
     return null;
+  } finally {
+    clipboard.writeText(originalText);
   }
 }
 

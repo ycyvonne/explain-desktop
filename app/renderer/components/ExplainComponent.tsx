@@ -5,8 +5,8 @@ import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import askLLM from './llm';
-import { normalizeMd } from './utils';
+import askLLM from '../services/llm';
+import { normalizeMd } from '../utils/utils';
 
 const EXPLANATION_LEVELS = [
   'a 5 year old',
@@ -24,7 +24,7 @@ const EXPLANATION_LABELS = [
   'expert',
 ] as const;
 
-type ExplainCache = {
+export type ExplainCache = {
   get: (key: string) => string | undefined;
   set: (key: string, value: string) => void;
   clear: () => void;

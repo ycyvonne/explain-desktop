@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import ExplainWindow from './ExplainWindow';
+import ExplainWindow from './components/ExplainWindow';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

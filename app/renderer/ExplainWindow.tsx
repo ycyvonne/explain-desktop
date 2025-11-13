@@ -9,6 +9,7 @@ import askLLM from './llm';
 import { normalizeMd } from './utils';
 import ExplainComponent from './ExplainComponent';
 import SettingsComponent from './SettingsComponent';
+import { useCache } from './useCache';
 
 type Role = 'user' | 'assistant';
 
@@ -29,6 +30,8 @@ const ExplainWindow: React.FC = () => {
   const [explanation, setExplanation] = useState<string>('');
   const [showExplanationContext, setShowExplanationContext] = useState(false);
   const [explainKey, setExplainKey] = useState(0);
+  const [explainLevel, setExplainLevel] = useState<number>(2); // Default to high school (middle option)
+  const explainCache = useCache<string, string>(); // Cache for explanations: key = `${inputType}-${inputId}-${level}`
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>([]);
@@ -82,11 +85,21 @@ const ExplainWindow: React.FC = () => {
       setLoading(true);
 
       try {
+        // Include explanation in history if it's shown in context
+        let historyWithExplanation = historyBase;
+        if (showExplanationContext && explanation) {
+          // Prepend the explanation as an assistant message to provide context
+          historyWithExplanation = [
+            { role: 'assistant', content: explanation },
+            ...historyBase,
+          ];
+        }
+
         const answer = await askLLM({
           question: activeQuestion,
           screenshotDataUrl: activeImage || undefined,
           text: activeText || undefined,
-          history: historyBase,
+          history: historyWithExplanation,
         });
 
         setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
@@ -100,7 +113,7 @@ const ExplainWindow: React.FC = () => {
         setLoading(false);
       }
     },
-    [image, selectedText, input, loading],
+    [image, selectedText, input, loading, showExplanationContext, explanation],
   );
 
   const onSubmit = useCallback(
@@ -118,6 +131,8 @@ const ExplainWindow: React.FC = () => {
       setMessages([]);
       setExplanation('');
       setShowExplanationContext(false);
+      // Clear cache for previous input when new input arrives
+      explainCache.clear();
       setExplainKey((prev) => prev + 1);
       // Set initial tab based on isExplain, but user can switch
       // Only set to explain/chat if we have content, otherwise keep current tab
@@ -144,6 +159,8 @@ const ExplainWindow: React.FC = () => {
       setMessages([]);
       setExplanation('');
       setShowExplanationContext(false);
+      // Clear cache for previous input when new input arrives
+      explainCache.clear();
       setExplainKey((prev) => prev + 1);
       // Only set to explain/chat if we have content, otherwise keep current tab
       if (text) {
@@ -260,7 +277,10 @@ const ExplainWindow: React.FC = () => {
               key={explainKey}
               image={image} 
               text={selectedText}
+              level={explainLevel}
+              onLevelChange={setExplainLevel}
               onExplanationChange={setExplanation}
+              cache={explainCache}
               onAskFollowup={() => {
                 setShowExplanationContext(true);
                 setActiveTab('chat');

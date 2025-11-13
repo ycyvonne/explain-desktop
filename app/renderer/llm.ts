@@ -5,12 +5,6 @@ type AskArgs = {
   history: { role: 'user' | 'assistant'; content: string }[];
 };
 
-const SYSTEM_PROMPT =
-  'You are a concise on-screen assistant. Explain what is in the screenshot and answer precisely.';
-
-const SYSTEM_PROMPT_TEXT =
-  'You are a concise on-screen assistant. Explain the selected text and answer precisely. If it is code, explain what it does.';
-
 export default async function askLLM({
   question,
   screenshotDataUrl,
@@ -22,7 +16,20 @@ export default async function askLLM({
     throw new Error('Missing VITE_OPENAI_API_KEY. Add it to your environment before running the app.');
   }
 
-  const systemPrompt = screenshotDataUrl ? SYSTEM_PROMPT : SYSTEM_PROMPT_TEXT;
+  const hasQuestion = question && question.trim().length > 0;
+  
+  let systemPrompt: string;
+  if (screenshotDataUrl) {
+    systemPrompt = hasQuestion
+      ? 'You are a concise on-screen assistant. Answer the user\'s question in context of the screenshot and answer precisely.'
+      : 'You are a concise on-screen assistant. Explain what is in the screenshot and answer precisely.';
+  } else {
+    systemPrompt = hasQuestion
+      ? 'You are a concise on-screen assistant. Answer the user\'s question in context of the selected text and answer precisely.'
+      : 'You are a concise on-screen assistant. Explain the selected text and answer precisely.';
+  }
+  
+  systemPrompt += " If the context is code, explain what it does. Do not repeat the question or context in your answer.";
 
   let userContent: any;
   if (screenshotDataUrl) {

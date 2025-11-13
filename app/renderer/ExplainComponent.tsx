@@ -24,17 +24,40 @@ const EXPLANATION_LABELS = [
   'expert',
 ] as const;
 
+type ExplainCache = {
+  get: (key: string) => string | undefined;
+  set: (key: string, value: string) => void;
+  clear: () => void;
+  has: (key: string) => boolean;
+};
+
 type ExplainComponentProps = {
   image?: string | null;
   text?: string | null;
+  level?: number;
+  onLevelChange?: (level: number) => void;
   onExplanationChange?: (explanation: string) => void;
+  cache?: ExplainCache;
   onAskFollowup?: () => void;
 };
 
-const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, onExplanationChange, onAskFollowup }) => {
-  const [level, setLevel] = useState<number>(2); // Default to high school (middle option)
+const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, level = 2, onLevelChange, onExplanationChange, cache, onAskFollowup }) => {
   const [explanation, setExplanation] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // Generate cache key for current input and level
+  const getCacheKey = useCallback(() => {
+    if (image) {
+      // For images, use a hash of the dataUrl (first 200 chars should be unique enough)
+      const imageId = image.substring(0, 200);
+      return `image-${imageId}-${level}`;
+    }
+    if (text) {
+      // For text, use the text itself as the key
+      return `text-${text}-${level}`;
+    }
+    return null;
+  }, [image, text, level]);
 
   // Clear explanation when image or text changes
   useEffect(() => {
@@ -52,6 +75,17 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, onExpl
       return;
     }
 
+    // Check cache first
+    const cacheKey = getCacheKey();
+    if (cache && cacheKey) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        setExplanation(cached);
+        onExplanationChange?.(cached);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const levelText = EXPLANATION_LEVELS[level];
@@ -66,32 +100,61 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, onExpl
 
       setExplanation(answer);
       onExplanationChange?.(answer);
+      
+      // Store in cache
+      if (cache && cacheKey) {
+        cache.set(cacheKey, answer);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const errorMessage = `Failed to generate explanation: ${message}`;
       setExplanation(errorMessage);
       onExplanationChange?.(errorMessage);
+      
+      // Don't cache errors
     } finally {
       setLoading(false);
     }
-  }, [image, text, level, loading, onExplanationChange]);
+  }, [image, text, level, loading, onExplanationChange, cache, getCacheKey]);
 
   // Auto-trigger explain when text is selected (via cmd+shift+c)
   useEffect(() => {
     if ((text || image) && !loading && !explanation) {
+      // Check cache first before auto-triggering
+      const cacheKey = getCacheKey();
+      if (cache && cacheKey) {
+        const cached = cache.get(cacheKey);
+        if (cached) {
+          setExplanation(cached);
+          onExplanationChange?.(cached);
+          return;
+        }
+      }
       // Small delay to ensure component is fully mounted
       const timer = setTimeout(() => {
         handleExplain();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [text, image, loading, explanation, handleExplain]);
+  }, [text, image, loading, explanation, handleExplain, cache, getCacheKey, onExplanationChange]);
 
+  // When level changes, check cache first, then call handleExplain if not cached
   useEffect(() => {
-    if ((text || image) && !loading) {
-      handleExplain();
+    if (!(text || image) || loading) return;
+    
+    const cacheKey = getCacheKey();
+    if (cache && cacheKey) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        setExplanation(cached);
+        onExplanationChange?.(cached);
+        return;
+      }
     }
-  }, [level]);
+    
+    // Not in cache, fetch it
+    handleExplain();
+  }, [level, text, image, loading, cache, getCacheKey, onExplanationChange, handleExplain]);
 
   return (
     <>
@@ -103,7 +166,7 @@ const ExplainComponent: React.FC<ExplainComponentProps> = ({ image, text, onExpl
             max="4"
             step="1"
             value={level}
-            onChange={(e) => setLevel(Number(e.target.value))}
+            onChange={(e) => onLevelChange?.(Number(e.target.value))}
             className="explain-slider"
             disabled={loading}
             style={{

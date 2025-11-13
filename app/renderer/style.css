@@ -498,15 +498,14 @@ input {
 
 .shortcut-display {
   flex: 1;
-  font-size: 14px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: rgba(134, 197, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
   padding: 6px 10px;
   background: rgba(18, 18, 18, 0.6);
   border-radius: 6px;
   border: 1px solid rgba(120, 120, 120, 0.2);
-  min-width: 120px;
-  text-align: center;
 }
 
 .shortcut-editing {

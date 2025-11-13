@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Command, Option, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Home, Delete } from 'lucide-react';
 
 type ShortcutConfig = {
+  textSelection: string;
   screenshotChat: string;
   screenshotExplain: string;
-  textSelection: string;
 };
 
 const DEFAULT_SHORTCUTS: ShortcutConfig = {
@@ -14,9 +15,16 @@ const DEFAULT_SHORTCUTS: ShortcutConfig = {
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   textSelection: 'Text Selection',
-  screenshotChat: 'Screenshot (Chat Mode)',
-  screenshotExplain: 'Screenshot (Explain Mode)',
+  screenshotChat: 'Screenshot (Chat)',
+  screenshotExplain: 'Screenshot (Explain)',
 };
+
+// Define the order in which shortcuts should be displayed
+const SHORTCUT_ORDER: Array<keyof ShortcutConfig> = [
+  'textSelection',
+  'screenshotExplain',
+  'screenshotChat',
+];
 
 // Protected system shortcuts that cannot be overridden (must match main.ts)
 const PROTECTED_SHORTCUTS = [
@@ -56,14 +64,149 @@ const SettingsComponent: React.FC = () => {
     });
   }, []);
 
-  const formatShortcut = (accelerator: string): string => {
-    return accelerator
-      .replace(/CommandOrControl/g, '⌘')
-      .replace(/Command/g, '⌘')
-      .replace(/Control/g, '⌃')
-      .replace(/Alt/g, '⌥')
-      .replace(/Shift/g, '⇧')
-      .replace(/\+/g, '');
+  const formatShortcut = (accelerator: string): React.ReactNode => {
+    const parts = accelerator.split('+');
+    const elements: React.ReactNode[] = [];
+    
+    parts.forEach((part, index) => {
+      if (index > 0) {
+        elements.push(
+          <span key={`plus-${index}`} style={{ margin: '0 4px', color: 'rgba(255, 255, 255, 0.4)' }}>
+            +
+          </span>
+        );
+      }
+      
+      let icon: React.ReactNode = null;
+      let label: string = part;
+      
+      switch (part) {
+        case 'CommandOrControl':
+        case 'Command':
+          icon = <Command size={14} />;
+          label = '';
+          break;
+        case 'Control':
+          // Use a custom SVG for Control key since lucide-react doesn't have it
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3"></path>
+              <path d="M9 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3"></path>
+            </svg>
+          );
+          label = '';
+          break;
+        case 'Alt':
+          icon = <Option size={14} />;
+          label = '';
+          break;
+        case 'Shift':
+          // Use a custom SVG for Shift key
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m7 11 5-5 5 5"></path>
+              <path d="M12 6v14"></path>
+            </svg>
+          );
+          label = '';
+          break;
+        case 'Up':
+          icon = <ArrowUp size={14} />;
+          label = '';
+          break;
+        case 'Down':
+          icon = <ArrowDown size={14} />;
+          label = '';
+          break;
+        case 'Left':
+          icon = <ArrowLeft size={14} />;
+          label = '';
+          break;
+        case 'Right':
+          icon = <ArrowRight size={14} />;
+          label = '';
+          break;
+        case 'Home':
+          icon = <Home size={14} />;
+          label = '';
+          break;
+        case 'End':
+          // Use a custom SVG for End key
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 7l10 10M7 17L17 7"></path>
+            </svg>
+          );
+          label = '';
+          break;
+        case 'PageUp':
+          // Use a custom SVG for PageUp
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 15l-6-6-6 6"></path>
+            </svg>
+          );
+          label = '';
+          break;
+        case 'PageDown':
+          // Use a custom SVG for PageDown
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9l6 6 6-6"></path>
+            </svg>
+          );
+          label = '';
+          break;
+        case 'Backspace':
+        case 'Delete':
+          icon = <Delete size={14} />;
+          label = '';
+          break;
+        case 'Escape':
+          label = 'Esc';
+          break;
+        case 'Enter':
+          label = 'Enter';
+          break;
+        case 'Tab':
+          label = 'Tab';
+          break;
+        default:
+          // For function keys (F1-F12) and regular keys
+          if (part.startsWith('F') && /^F\d+$/.test(part)) {
+            label = part;
+          } else {
+            label = part.toUpperCase();
+          }
+          break;
+      }
+      
+      elements.push(
+        <span
+          key={part}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: icon ? '24px' : 'auto',
+            height: '24px',
+            padding: icon ? '0 6px' : '0 8px',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '4px',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            fontSize: '12px',
+            fontFamily: icon ? 'inherit' : 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace',
+            color: 'rgba(255, 255, 255, 0.9)',
+            gap: '4px',
+          }}
+        >
+          {icon}
+          {label && <span>{label}</span>}
+        </span>
+      );
+    });
+    
+    return <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px' }}>{elements}</span>;
   };
 
   const parseKeyPress = useCallback((event: KeyboardEvent): string | null => {
@@ -236,7 +379,7 @@ const SettingsComponent: React.FC = () => {
         )}
 
         <div className="shortcuts-list">
-          {(Object.keys(shortcuts) as Array<keyof ShortcutConfig>).map((key) => (
+          {SHORTCUT_ORDER.map((key) => (
             <div key={key} className="shortcut-item">
               <div className="shortcut-label">{SHORTCUT_LABELS[key]}</div>
               <div className="shortcut-controls">
